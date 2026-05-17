@@ -1219,7 +1219,7 @@ async function loadPronunciation(word) {
   if (!pronunciationEl) return;
 
   const normalizedWord = normalizeWord(word);
-  const key = `pron_${normalizedWord}`;
+  const key = `portfolio_pron_${normalizedWord}`;
   lastPronunciationRequest = normalizedWord;
 
   const cached = localStorage.getItem(key);
