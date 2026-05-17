@@ -423,7 +423,7 @@ async function signOutUser() {
 function subscribeFavoritesRealtime() {
   if (!currentUser) return;
 
-  const ref = doc(db, "portfolioUsers", currentUser.uid);
+  const ref = doc(db, FAVORITES_COLLECTION, currentUser.uid);
 
   favoritesUnsubscribe = onSnapshot(ref, (snap) => {
     if (!snap.exists()) return;
@@ -492,7 +492,7 @@ async function loadFavoritesFromCloud() {
   if (!currentUser) return;
 
   try {
-    const ref = doc(db, "portfolioUsers", currentUser.uid);
+    const ref = doc(db, FAVORITES_COLLECTION, currentUser.uid);
     const snap = await getDoc(ref);
 
     if (!snap.exists()) {
@@ -526,7 +526,7 @@ async function saveFavoritesToCloud() {
   if (!currentUser) return;
 
   try {
-    const ref = doc(db, "portfolioUsers", currentUser.uid);
+    const ref = doc(db, FAVORITES_COLLECTION, currentUser.uid);
     await setDoc(ref, { favorites, favoritesUpdatedAt }, { merge: true });
   } catch (error) {
     console.error("クラウド保存失敗:", error);
