@@ -32,19 +32,19 @@ const sheetUrls = {
 };
 
 const volOrder = ["vol1", "vol2", "vol3", "vol4"];
+const FAVORITES_COLLECTION = "portfolioUsers";
 
 const STORAGE_KEYS = {
-  vol: "tango_current_vol",
-  indexByVol: "tango_index_by_vol",
-  sidebarOpen: "tango_sidebar_open",
-  autoSpeak: "tango_auto_speak",
-  favorites: "tango_favorites",
-  favoritesUpdatedAt: "tango_favorites_updated_at",
-  challengeMode: "tango_challenge_mode",
-  challengeTime: "tango_challenge_time",
-  randomMode: "tango_random_mode"
+  vol: "portfolio_tango_current_vol",
+  indexByVol: "portfolio_tango_index_by_vol",
+  sidebarOpen: "portfolio_tango_sidebar_open",
+  autoSpeak: "portfolio_tango_auto_speak",
+  favorites: "portfolio_tango_favorites",
+  favoritesUpdatedAt: "portfolio_tango_favorites_updated_at",
+  challengeMode: "portfolio_tango_challenge_mode",
+  challengeTime: "portfolio_tango_challenge_time",
+  randomMode: "portfolio_tango_random_mode"
 };
-
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
