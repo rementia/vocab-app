@@ -25,10 +25,10 @@ const firebaseConfig = {
 };
 
 const sheetUrls = {
-  vol1: "https://docs.google.com/spreadsheets/d/1Kih8sWJwP1TgzUfQrHIAN-f0fiHCOrvNU3554A_DMK0/export?format=csv&gid=0",
-  vol2: "https://docs.google.com/spreadsheets/d/1Kih8sWJwP1TgzUfQrHIAN-f0fiHCOrvNU3554A_DMK0/export?format=csv&gid=1906065075",
-  vol3: "https://docs.google.com/spreadsheets/d/1Kih8sWJwP1TgzUfQrHIAN-f0fiHCOrvNU3554A_DMK0/export?format=csv&gid=769789994",
-  vol4: "https://docs.google.com/spreadsheets/d/1Kih8sWJwP1TgzUfQrHIAN-f0fiHCOrvNU3554A_DMK0/export?format=csv&gid=297106222"
+  vol1: "https://docs.google.com/spreadsheets/d/17XhRsbdw5NfgGPsmkam8_B1F2mtlGMJ3Uh00l5UIIMY/export?format=csv&gid=0",
+  vol2: "https://docs.google.com/spreadsheets/d/17XhRsbdw5NfgGPsmkam8_B1F2mtlGMJ3Uh00l5UIIMY/export?format=csv&gid=1971123896",
+  vol3: "https://docs.google.com/spreadsheets/d/17XhRsbdw5NfgGPsmkam8_B1F2mtlGMJ3Uh00l5UIIMY/export?format=csv&gid=228942471",
+  vol4: "https://docs.google.com/spreadsheets/d/17XhRsbdw5NfgGPsmkam8_B1F2mtlGMJ3Uh00l5UIIMY/export?format=csv&gid=883680225"
 };
 
 const volOrder = ["vol1", "vol2", "vol3", "vol4"];
@@ -423,7 +423,7 @@ async function signOutUser() {
 function subscribeFavoritesRealtime() {
   if (!currentUser) return;
 
-  const ref = doc(db, "users", currentUser.uid);
+  const ref = doc(db, "portfolioUsers", currentUser.uid);
 
   favoritesUnsubscribe = onSnapshot(ref, (snap) => {
     if (!snap.exists()) return;
@@ -492,7 +492,7 @@ async function loadFavoritesFromCloud() {
   if (!currentUser) return;
 
   try {
-    const ref = doc(db, "users", currentUser.uid);
+    const ref = doc(db, "portfolioUsers", currentUser.uid);
     const snap = await getDoc(ref);
 
     if (!snap.exists()) {
@@ -526,7 +526,7 @@ async function saveFavoritesToCloud() {
   if (!currentUser) return;
 
   try {
-    const ref = doc(db, "users", currentUser.uid);
+    const ref = doc(db, "portfolioUsers", currentUser.uid);
     await setDoc(ref, { favorites, favoritesUpdatedAt }, { merge: true });
   } catch (error) {
     console.error("クラウド保存失敗:", error);
