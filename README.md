@@ -81,6 +81,29 @@ The public demo uses a small, independently prepared sample vocabulary dataset. 
 
 English words themselves are general language information, but the selection, ordering, translations, examples, and classification of commercial learning materials may require careful handling. For that reason, this public version uses demo data prepared separately for safe presentation.
 
+## Privacy Notice
+
+This app uses Firebase Authentication for Google login and Cloud Firestore to save user-specific favorite word data.
+
+When a user signs in with Google, Firebase Authentication may manage login-related information such as the user's UID and email address.
+
+Cloud Firestore stores the following user-specific data:
+
+- Firebase Authentication UID
+- Favorite word data
+- Last updated timestamp for favorite data
+
+This data is used only to provide the favorite word feature and to save user-specific learning data.  
+It is not used for advertising, sold to third parties, or used for purposes unrelated to this app.
+
+### プライバシーについて
+
+このアプリでは、Googleログイン機能に Firebase Authentication を使用しています。  
+ログイン時に、Firebase Authentication 上でユーザーID（UID）およびメールアドレスなどのログイン情報が管理される場合があります。
+
+Firestoreには、ログインユーザーごとのお気に入り情報と更新日時を保存します。  
+これらの情報は、お気に入り機能および学習状態の保存のためにのみ使用し、広告配信・第三者販売・目的外利用には使用しません。
+
 ## Future Improvements
 
 - Improve mobile landscape layout
