@@ -728,10 +728,12 @@ function applyWordOrder(resetIndex = false) {
     const shuffleKey = makeShuffleKey();
     const currentCache = shuffledWordsMap[shuffleKey];
 
+    const baseWordIds = new Set(baseWords.map((item) => item.id));
+
     const cacheValid =
       Array.isArray(currentCache) &&
       currentCache.length === baseWords.length &&
-      currentCache.every((item, i) => item.id === baseWords[i].id);
+      currentCache.every((item) => baseWordIds.has(item.id));
 
     if (!cacheValid) {
       shuffledWordsMap[shuffleKey] = shuffleArray(baseWords);
@@ -927,7 +929,18 @@ function updateToggleButton(button, label, isActive) {
 
 function updateFavoriteToggleButton() {
   const current = getCurrentWord();
-  if (!favoriteToggleBtnEl || !current) return;
+  if (!favoriteToggleBtnEl) return;
+
+  if (!current) {
+    favoriteToggleBtnEl.textContent = "☆";
+    favoriteToggleBtnEl.classList.remove("active");
+    favoriteToggleBtnEl.title = "お気に入り登録";
+    favoriteToggleBtnEl.setAttribute("aria-label", "お気に入り登録");
+    favoriteToggleBtnEl.disabled = true;
+    return;
+  }
+
+  favoriteToggleBtnEl.disabled = false;
 
   const active = isFavorite(current);
   favoriteToggleBtnEl.textContent = active ? "★" : "☆";
