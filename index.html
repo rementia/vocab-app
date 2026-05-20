@@ -24,6 +24,8 @@
           class="control-btn toggle-btn"
           id="toggleSidebarBtn"
           aria-label="一覧の表示切替"
+          aria-pressed="false"
+          aria-expanded="true"
         >
           一覧
         </button>
@@ -59,6 +61,7 @@
             class="control-btn auto-speak-btn"
             id="autoSpeakBtn"
             aria-label="自動発音"
+            aria-pressed="false"
           >
             自動発音
           </button>
@@ -67,6 +70,7 @@
             class="control-btn challenge-btn"
             id="challengeBtn"
             aria-label="想起学習"
+            aria-pressed="false"
           >
             想起学習
           </button>
@@ -75,6 +79,7 @@
             class="control-btn random-btn"
             id="randomBtn"
             aria-label="ランダム"
+            aria-pressed="false"
           >
             ランダム
           </button>
@@ -93,18 +98,19 @@
       <div class="main-layout">
         <div class="center-box">
           <div class="current-row">
-            <div class="current-vol" id="current">vol.1</div>
+            <div class="current-vol" id="current" aria-live="polite">vol.1</div>
             <div id="progress"></div>
             <button
               class="control-btn favorite-toggle-btn inline-favorite"
               id="favoriteToggleBtn"
+              aria-pressed="false"
             >
               ☆
             </button>
           </div>
 
-          <div id="word">読み込み中...</div>
-          <div id="meaning"></div>
+          <div id="word" aria-live="polite">読み込み中...</div>
+          <div id="meaning" aria-live="polite"></div>
 
           <div class="button-row">
             <div class="nav-box">
@@ -113,7 +119,7 @@
             </div>
 
             <div class="nav-box">
-              <div id="pronunciation"></div>
+              <div id="pronunciation" aria-live="polite"></div>
               <button class="main-btn speak-btn" id="speakWordBtn">発音</button>
             </div>
 
@@ -131,6 +137,6 @@
     </main>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="bootstrap.js"></script>
 </body>
 </html>
