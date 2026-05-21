@@ -1,4 +1,5 @@
-import { normalizeWord } from './data.js';
+﻿import { normalizeWord } from './data.js';
+import { safeGetItem, safeSetItem } from './storage.js';
 
 let pronunciationEl = null;
 let currentPronunciationController = null;
@@ -15,7 +16,7 @@ export function updateSpeechButtonAvailability(speakBtnEl) {
   if (!speakBtnEl) return;
 
   speakBtnEl.disabled = !supported;
-  speakBtnEl.style.opacity = supported ? '1' : '0.5';
+  speakBtnEl.classList.toggle('is-disabled', !supported);
   speakBtnEl.title = supported ? '発音' : 'この端末では発音未対応';
 }
 
@@ -40,7 +41,7 @@ export async function loadPronunciation(word) {
   const key = `portfolio_pron_${normalizedWord}`;
   lastPronunciationRequest = normalizedWord;
 
-  const cached = localStorage.getItem(key);
+  const cached = safeGetItem(key);
   if (cached !== null) {
     pronunciationEl.textContent = cached || '発音記号なし';
     return;
@@ -72,7 +73,7 @@ export async function loadPronunciation(word) {
 
     phonetic = phonetic.replace(/^\/|\/$/g, '');
     if (phonetic) {
-      localStorage.setItem(key, phonetic);
+      safeSetItem(key, phonetic);
     }
 
     const current = getCurrentWordFn ? getCurrentWordFn() : null;

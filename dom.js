@@ -1,0 +1,31 @@
+export function getDomElements() {
+  return {
+    searchInputEl: document.getElementById("searchInput"),
+    clearSearchBtnEl: document.getElementById("clearSearchBtn"),
+    listEl: document.getElementById("list"),
+    sidebarEl: document.getElementById("sidebar"),
+    wordEl: document.getElementById("word"),
+    meaningEl: document.getElementById("meaning"),
+    progressEl: document.getElementById("progress"),
+    pronunciationEl: document.getElementById("pronunciation"),
+    prevHintEl: document.getElementById("prevHint"),
+    nextHintEl: document.getElementById("nextHint"),
+    currentEl: document.getElementById("current"),
+    timeSlider: document.getElementById("timeSlider"),
+    timeValue: document.getElementById("timeValue"),
+    favoriteToggleBtnEl: document.getElementById("favoriteToggleBtn"),
+    difficultToggleBtnEl: document.getElementById("difficultToggleBtn"),
+    favoriteListBtnEl: document.getElementById("favoriteListBtn"),
+    difficultListBtnEl: document.getElementById("difficultListBtn"),
+    autoSpeakBtnEl: document.getElementById("autoSpeakBtn"),
+    challengeBtnEl: document.getElementById("challengeBtn"),
+    randomBtnEl: document.getElementById("randomBtn"),
+    loginBtnEl: document.getElementById("loginBtn"),
+    logoutBtnEl: document.getElementById("logoutBtn"),
+    toggleSidebarBtnEl: document.getElementById("toggleSidebarBtn"),
+    prevWordBtnEl: document.getElementById("prevWordBtn"),
+    nextWordBtnEl: document.getElementById("nextWordBtn"),
+    speakWordBtnEl: document.getElementById("speakWordBtn"),
+    volButtons: Array.from(document.querySelectorAll(".vol-btn"))
+  };
+}

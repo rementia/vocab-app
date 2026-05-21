@@ -44,6 +44,13 @@
           >
             ★
           </button>
+          <button
+            class="difficult-list-btn"
+            id="difficultListBtn"
+            aria-label="苦手単語一覧"
+          >
+            苦手
+          </button>
         </div>
         <div class="recall-time-control">
           <label for="timeSlider">
@@ -88,9 +95,18 @@
     </header>
 
     <button class="login-btn" id="loginBtn">Googleログイン</button>
-    <button class="login-btn" id="logoutBtn" style="display:none;">ログアウト</button>
+    <button class="login-btn" id="logoutBtn" hidden>ログアウト</button>
 
     <aside class="sidebar" id="sidebar" aria-label="単語一覧">
+      <div class="sidebar-search">
+        <input
+          id="searchInput"
+          type="search"
+          placeholder="検索"
+          aria-label="単語や意味を検索"
+        />
+        <button id="clearSearchBtn" aria-label="検索をクリア">×</button>
+      </div>
       <div id="list"></div>
     </aside>
 
@@ -106,6 +122,13 @@
               aria-pressed="false"
             >
               ☆
+            </button>
+            <button
+              class="control-btn difficult-toggle-btn inline-difficult"
+              id="difficultToggleBtn"
+              aria-pressed="false"
+            >
+              苦手
             </button>
           </div>
 

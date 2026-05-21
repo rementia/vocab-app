@@ -1,25 +1,14 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-import {
-  getFirestore
-} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCgVh9fmwib7ox-I1Q9c5IU-B4909XkhkU",
-  authDomain: "svl-app-65204.firebaseapp.com",
-  projectId: "svl-app-65204",
-  storageBucket: "svl-app-65204.firebasestorage.app",
-  messagingSenderId: "512772798709",
-  appId: "1:512772798709:web:d28cb5154b15fccae26dbc",
-  measurementId: "G-XYZMESKJRM"
-};
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 import { sheetUrls, fetchWordsForVol } from './data.js';
+import { getDomElements } from './dom.js';
+import { auth, db, provider } from './firebaseClient.js';
+import {
+  FAVORITES_COLLECTION,
+  volOrder,
+  createInitialIndexByVol,
+  createInitialWordsByVol
+} from './state.js';
 import { signInWithGoogle, signOutUser } from './auth.js';
-
 import {
   STORAGE_KEYS,
   safeGetItem,
@@ -30,11 +19,11 @@ import {
   saveAutoSpeakState,
   saveFavoritesToLocalOnly,
   saveFavoritesUpdatedAt,
+  saveDifficultsToLocalOnly,
   saveChallengeModeState,
   saveChallengeTimeState,
   saveRandomModeState
 } from './storage.js';
-
 import {
   renderApp,
   renderCurrentWord as renderCurrentWordUI,
@@ -42,6 +31,7 @@ import {
   updateChallengeButton as uiUpdateChallengeButton,
   updateRandomButton as uiUpdateRandomButton,
   updateFavoriteToggleButton as uiUpdateFavoriteToggleButton,
+  updateDifficultToggleButton as uiUpdateDifficultToggleButton,
   applySidebarState as uiApplySidebarState,
   updateAuthUI as uiUpdateAuthUI
 } from './ui.js';
@@ -51,6 +41,12 @@ import {
   toggleFavoriteCurrentWord as toggleFavoriteCurrentWordManager,
   loadFavoritesMode as loadFavoritesModeManager
 } from './favoritesManager.js';
+import {
+  buildDifficultEntries,
+  isDifficult,
+  toggleDifficultCurrentWord as toggleDifficultCurrentWordManager,
+  loadDifficultsMode as loadDifficultsModeManager
+} from './difficultsManager.js';
 import {
   bindKeyboardEvents,
   bindTouchEvents,
@@ -72,11 +68,6 @@ import {
   speakWord,
   loadPronunciation
 } from './pronunciation.js';
-
-const volOrder = ["vol1", "vol2", "vol3", "vol4"];
-const FAVORITES_COLLECTION = "portfolioUsers";
-const firebaseApp = initializeApp(firebaseConfig);
-
 import {
   loadFavoritesFromCloudRemote,
   subscribeFavoritesRealtimeRemote,
@@ -84,48 +75,40 @@ import {
   syncFavoritesWithCloud,
   resolveFavoritesSnapshot
 } from './favorites.js';
-const auth = getAuth(firebaseApp);
-const db = getFirestore(firebaseApp);
-const provider = new GoogleAuthProvider();
-
-provider.setCustomParameters({
-  prompt: "select_account"
-});
-
-const listEl = document.getElementById("list");
-const sidebarEl = document.getElementById("sidebar");
-const wordEl = document.getElementById("word");
-const meaningEl = document.getElementById("meaning");
-const progressEl = document.getElementById("progress");
-const pronunciationEl = document.getElementById("pronunciation");
-const prevHintEl = document.getElementById("prevHint");
-const nextHintEl = document.getElementById("nextHint");
-const currentEl = document.getElementById("current");
-const timeSlider = document.getElementById("timeSlider");
-const timeValue = document.getElementById("timeValue");
-
-const favoriteToggleBtnEl = document.getElementById("favoriteToggleBtn");
-const favoriteListBtnEl = document.getElementById("favoriteListBtn");
-const autoSpeakBtnEl = document.getElementById("autoSpeakBtn");
-const challengeBtnEl = document.getElementById("challengeBtn");
-const randomBtnEl = document.getElementById("randomBtn");
-const loginBtnEl = document.getElementById("loginBtn");
-const logoutBtnEl = document.getElementById("logoutBtn");
-const toggleSidebarBtnEl = document.getElementById("toggleSidebarBtn");
-const prevWordBtnEl = document.getElementById("prevWordBtn");
-const nextWordBtnEl = document.getElementById("nextWordBtn");
-const speakWordBtnEl = document.getElementById("speakWordBtn");
-const volButtons = Array.from(document.querySelectorAll(".vol-btn"));
+const {
+  searchInputEl,
+  clearSearchBtnEl,
+  listEl,
+  sidebarEl,
+  wordEl,
+  meaningEl,
+  progressEl,
+  pronunciationEl,
+  prevHintEl,
+  nextHintEl,
+  currentEl,
+  timeSlider,
+  timeValue,
+  favoriteToggleBtnEl,
+  difficultToggleBtnEl,
+  favoriteListBtnEl,
+  difficultListBtnEl,
+  autoSpeakBtnEl,
+  challengeBtnEl,
+  randomBtnEl,
+  loginBtnEl,
+  logoutBtnEl,
+  toggleSidebarBtnEl,
+  prevWordBtnEl,
+  nextWordBtnEl,
+  speakWordBtnEl,
+  volButtons
+} = getDomElements();
 
 let currentUser = null;
 let favoritesUnsubscribe = null;
 
-let allWordsByVol = {
-  vol1: [],
-  vol2: [],
-  vol3: [],
-  vol4: []
-};
+let allWordsByVol = createInitialWordsByVol();
 
 let words = [];
 let index = 0;
@@ -134,6 +117,7 @@ let currentMode = "vol";
 let sidebarOpen = true;
 let autoSpeak = false;
 let favorites = {};
+let difficults = {};
 let favoritesUpdatedAt = 0;
 let challengeMode = false;
 let challengeTime = 1500;
@@ -147,14 +131,10 @@ let listNeedsRebuild = true;
 let renderedListVersion = "";
 let listVersion = 0;
 let favoritesVersion = 0;
+let difficultsVersion = 0;
+let searchQuery = "";
 
-let indexByVol = {
-  vol1: 0,
-  vol2: 0,
-  vol3: 0,
-  vol4: 0,
-  favorites: 0
-};
+let indexByVol = createInitialIndexByVol();
 
 const uiContext = {
   getState: () => ({
@@ -166,6 +146,8 @@ const uiContext = {
     renderedListVersion,
     listVersion,
     favoritesVersion,
+    difficultsVersion,
+    searchQuery,
     index,
     challengeMode,
     challengeTime,
@@ -176,6 +158,8 @@ const uiContext = {
     currentUser
   }),
   dom: {
+    searchInputEl,
+    clearSearchBtnEl,
     listEl,
     sidebarEl,
     wordEl,
@@ -186,7 +170,9 @@ const uiContext = {
     nextHintEl,
     currentEl,
     favoriteToggleBtnEl,
+    difficultToggleBtnEl,
     favoriteListBtnEl,
+    difficultListBtnEl,
     autoSpeakBtnEl,
     challengeBtnEl,
     randomBtnEl,
@@ -197,6 +183,7 @@ const uiContext = {
   },
   callbacks: {
     isFavorite: (item) => isFavorite(favorites, item),
+    isDifficult: (item) => isDifficult(difficults, item),
     getCurrentWord,
     persistCurrentIndex,
     loadPronunciation,
@@ -204,16 +191,12 @@ const uiContext = {
     clearAutoSpeakTimer,
     setMeaningRevealTimer,
     setListNeedsRebuild,
-    setRenderedListVersion
+    setRenderedListVersion,
+    setSearchQuery
   }
 };
 
 let shuffledWordsMap = {};
-
-/**
- * ランダム中の「戻る」を履歴ベースにするための履歴
- */
-// navigation history moved to navigation.js
 
 async function init() {
   loadSavedState();
@@ -248,6 +231,7 @@ async function init() {
     await handleLoadFavoritesMode();
     saveSidebarState(sidebarOpen);
     finishInitialLoading();
+    scheduleAutoSpeakAfterRender();
   }
   else {
     // 初回通常モード時はシートを読み込んで初期表示を完了する
@@ -255,7 +239,7 @@ async function init() {
   }
 }
 
-const handleViewportResize = handleViewportChange(render);
+const handleViewportResize = handleViewportChange(renderLayout);
 
 async function handleLoadFavoritesMode() {
   const result = await loadFavoritesModeManager(
@@ -283,9 +267,40 @@ async function handleLoadFavoritesMode() {
     if (typeof result.randomMode === "boolean") {
       randomMode = result.randomMode;
     }
+    scheduleAutoSpeakAfterRender();
   }
 }
 
+
+async function handleLoadDifficultsMode() {
+  const result = await loadDifficultsModeManager(
+    { allWordsByVol, currentMode, indexByVol, difficults, words, randomMode },
+    {
+      ensureAllVolumesLoaded,
+      saveCurrentModeState,
+      saveRandomModeState,
+      clearNavigationHistory: navClearNavigationHistory,
+      applyWordOrder,
+      requestListRebuild,
+      render,
+      updateRandomButton,
+      updateDifficultToggleButton,
+      getWords: () => words,
+      setCurrentMode: (mode) => { currentMode = mode; },
+      setRandomMode: (value) => { randomMode = value; }
+    },
+    volOrder
+  );
+
+  if (result) {
+    currentMode = result.currentMode;
+    index = result.index;
+    if (typeof result.randomMode === "boolean") {
+      randomMode = result.randomMode;
+    }
+    scheduleAutoSpeakAfterRender();
+  }
+}
 function handleToggleFavoriteCurrentWord() {
   const result = toggleFavoriteCurrentWordManager(
     {
@@ -319,9 +334,41 @@ function handleToggleFavoriteCurrentWord() {
     if (result.indexByVol) indexByVol = result.indexByVol;
     if (typeof result.favoritesUpdatedAt === "number") favoritesUpdatedAt = result.favoritesUpdatedAt;
     if (typeof result.favoritesVersion === "number") favoritesVersion = result.favoritesVersion;
+    scheduleAutoSpeakAfterRender();
   }
 }
 
+
+function handleToggleDifficultCurrentWord() {
+  const result = toggleDifficultCurrentWordManager(
+    {
+      difficults,
+      difficultsVersion,
+      currentMode,
+      words,
+      index,
+      indexByVol
+    },
+    {
+      getCurrentWord,
+      getWords: () => words,
+      saveDifficultsToLocalOnly,
+      clearAllShuffleCache,
+      requestListRebuild,
+      updateDifficultToggleButton,
+      applyWordOrder,
+      saveIndexByVol,
+      render
+    }
+  );
+
+  if (result) {
+    if (typeof result.index === "number") index = result.index;
+    if (result.indexByVol) indexByVol = result.indexByVol;
+    if (typeof result.difficultsVersion === "number") difficultsVersion = result.difficultsVersion;
+    scheduleAutoSpeakAfterRender();
+  }
+}
 function finishInitialLoading() {
   if (hasFinishedInitialLoading) return;
   hasFinishedInitialLoading = true;
@@ -343,30 +390,39 @@ function bindUIEvents() {
   challengeBtnEl?.addEventListener("click", toggleChallengeMode);
   randomBtnEl?.addEventListener("click", toggleRandomMode);
   favoriteListBtnEl?.addEventListener("click", handleLoadFavoritesMode);
+  difficultListBtnEl?.addEventListener("click", handleLoadDifficultsMode);
   favoriteToggleBtnEl?.addEventListener("click", handleToggleFavoriteCurrentWord);
+  difficultToggleBtnEl?.addEventListener("click", handleToggleDifficultCurrentWord);
   prevWordBtnEl?.addEventListener("click", prevWord);
   nextWordBtnEl?.addEventListener("click", nextWord);
   speakWordBtnEl?.addEventListener("click", speakWord);
 
+  searchInputEl?.addEventListener("input", () => {
+    setSearchQuery(searchInputEl.value);
+    requestListRebuild();
+    renderLayout();
+  });
+
+  clearSearchBtnEl?.addEventListener("click", () => {
+    setSearchQuery("");
+    requestListRebuild();
+    renderLayout();
+    searchInputEl?.focus();
+  });
   if (timeSlider && timeValue) {
+    timeSlider.value = challengeTime / 1000;
+    timeValue.textContent = (challengeTime / 1000).toFixed(1);
 
-      timeSlider.value = challengeTime / 1000;
-      timeValue.textContent = (challengeTime / 1000).toFixed(1);
+    timeSlider.addEventListener("input", () => {
+      challengeTime = parseFloat(timeSlider.value) * 1000;
+      timeValue.textContent = parseFloat(timeSlider.value).toFixed(1);
+      saveChallengeTimeState(challengeTime);
 
-      timeSlider.addEventListener("input", () => {
-
-        challengeTime = parseFloat(timeSlider.value) * 1000;
-
-        timeValue.textContent = parseFloat(timeSlider.value).toFixed(1);
-
-        saveChallengeTimeState(challengeTime);
-
-        if (challengeMode) {
-          renderCurrentWord();
-        }
-
-      });
-    }
+      if (challengeMode) {
+        renderCurrentWord();
+      }
+    });
+  }
 
   volButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -388,13 +444,13 @@ function bindUIEvents() {
   });
 }
 
-
 function loadSavedState() {
   const savedVol = safeGetItem(STORAGE_KEYS.vol);
   const savedSidebarOpen = safeGetItem(STORAGE_KEYS.sidebarOpen);
   const savedAutoSpeak = safeGetItem(STORAGE_KEYS.autoSpeak);
   const savedIndexByVol = safeGetItem(STORAGE_KEYS.indexByVol);
   const savedFavorites = safeGetItem(STORAGE_KEYS.favorites);
+  const savedDifficults = safeGetItem(STORAGE_KEYS.difficults);
   const savedFavoritesUpdatedAt = safeGetItem(STORAGE_KEYS.favoritesUpdatedAt);
   const savedChallengeMode = safeGetItem(STORAGE_KEYS.challengeMode);
   const savedChallengeTime = safeGetItem(STORAGE_KEYS.challengeTime);
@@ -413,8 +469,8 @@ function loadSavedState() {
     }
   }
 
-  if (savedMode === "favorites") {
-    currentMode = "favorites";
+  if (savedMode === "favorites" || savedMode === "difficults") {
+    currentMode = savedMode;
   }
 
   if (savedFavorites) {
@@ -426,6 +482,15 @@ function loadSavedState() {
     }
   }
 
+
+  if (savedDifficults) {
+    try {
+      const parsedDifficults = JSON.parse(savedDifficults);
+      difficults = parsedDifficults && typeof parsedDifficults === "object" ? parsedDifficults : {};
+    } catch {
+      difficults = {};
+    }
+  }
   if (savedFavoritesUpdatedAt) {
     favoritesUpdatedAt = Number(savedFavoritesUpdatedAt) || 0;
   }
@@ -488,10 +553,9 @@ function subscribeFavoritesRealtime() {
     }
 
     render();
+    scheduleAutoSpeakAfterRender();
   });
 }
-
-// Storage helpers moved to storage.js
 
 async function loadFavoritesFromCloud() {
   if (!currentUser) return;
@@ -550,6 +614,7 @@ async function loadSheet(volName) {
     requestListRebuild();
     render();
     finishInitialLoading();
+    scheduleAutoSpeakAfterRender();
 
     preloadOtherVolumesInBackground();
   } catch (error) {
@@ -565,7 +630,9 @@ async function preloadOtherVolumesInBackground() {
 }
 
 function makeShuffleKey() {
-  return currentMode === "favorites" ? "favorites:all" : `vol:${currentVol}`;
+  if (currentMode === "favorites") return "favorites:all";
+  if (currentMode === "difficults") return "difficults:all";
+  return `vol:${currentVol}`;
 }
 
 function shuffleArray(array) {
@@ -580,7 +647,9 @@ function shuffleArray(array) {
 function applyWordOrder(resetIndex = false, preserveCurrentId = null) {
   const baseWords = currentMode === "favorites"
     ? buildFavoriteEntries(allWordsByVol, volOrder, favorites)
-    : [...(allWordsByVol[currentVol] || [])];
+    : currentMode === "difficults"
+      ? buildDifficultEntries(allWordsByVol, volOrder, difficults)
+      : [...(allWordsByVol[currentVol] || [])];
 
   if (randomMode) {
     const shuffleKey = makeShuffleKey();
@@ -612,8 +681,6 @@ function clearAllShuffleCache() {
   shuffledWordsMap = {};
 }
 
-// navigation functions moved to navigation.js
-
 function requestListRebuild() {
   listNeedsRebuild = true;
   listVersion += 1;
@@ -627,14 +694,24 @@ function setRenderedListVersion(value) {
   renderedListVersion = value;
 }
 
+function setSearchQuery(value) {
+  searchQuery = value.trim();
+  if (searchInputEl && searchInputEl.value !== value) {
+    searchInputEl.value = value;
+  }
+}
+
 function persistCurrentIndex() {
   if (currentMode === "favorites") {
     indexByVol.favorites = index;
+  } else if (currentMode === "difficults") {
+    indexByVol.difficults = index;
   } else {
     indexByVol[currentVol] = index;
   }
   saveIndexByVol(indexByVol);
 }
+
 function setMeaningRevealTimer(timer) {
   meaningRevealTimer = timer;
 }
@@ -645,6 +722,10 @@ function render() {
 
 function renderCurrentWord() {
   renderCurrentWordUI(uiContext);
+}
+
+function renderLayout() {
+  renderApp(uiContext, { skipCurrentWord: true });
 }
 
 function updateAutoSpeakButton() {
@@ -661,6 +742,10 @@ function updateRandomButton() {
 
 function updateFavoriteToggleButton() {
   uiUpdateFavoriteToggleButton(uiContext);
+}
+
+function updateDifficultToggleButton() {
+  uiUpdateDifficultToggleButton(uiContext);
 }
 
 function applySidebarState() {
@@ -683,9 +768,19 @@ function clearAutoSpeakTimer() {
 
 function scheduleAutoSpeak() {
   if (!autoSpeak) return;
+  clearAutoSpeakTimer();
   autoSpeakTimer = setTimeout(() => {
     speakWord();
   }, 260);
+}
+
+function scheduleAutoSpeakAfterRender() {
+  if (!autoSpeak) return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      scheduleAutoSpeak();
+    });
+  });
 }
 
 function getCurrentWord() {
@@ -731,6 +826,7 @@ function toggleRandomMode() {
   applyWordOrder(false, currentId);
   requestListRebuild();
   render();
+  scheduleAutoSpeakAfterRender();
 }
 
 function prevWord() {
@@ -742,6 +838,7 @@ function prevWord() {
       index = historyIndex;
       renderCurrentWord();
       scheduleAutoSpeak();
+      persistCurrentIndex();
       return;
     }
   }
@@ -759,6 +856,7 @@ function nextWord() {
       index = historyIndex;
       renderCurrentWord();
       scheduleAutoSpeak();
+      persistCurrentIndex();
       return;
     }
   }
@@ -766,7 +864,5 @@ function nextWord() {
   const nextIndex = (index + 1) % words.length;
   navMoveToIndex(nextIndex, { pushHistory: randomMode });
 }
-
-// pronunciation logic moved to pronunciation.js
 
 export { init, finishInitialLoading };

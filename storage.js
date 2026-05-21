@@ -6,12 +6,13 @@ export const STORAGE_KEYS = {
   autoSpeak: "portfolio_tango_auto_speak",
   favorites: "portfolio_tango_favorites",
   favoritesUpdatedAt: "portfolio_tango_favorites_updated_at",
+  difficults: "portfolio_tango_difficults",
   challengeMode: "portfolio_tango_challenge_mode",
   challengeTime: "portfolio_tango_challenge_time",
   randomMode: "portfolio_tango_random_mode"
 };
 
-function safeSetItem(key, value) {
+export function safeSetItem(key, value) {
   try {
     localStorage.setItem(key, value);
   } catch (error) {
@@ -54,6 +55,10 @@ export function saveFavoritesToLocalOnly(value) {
 
 export function saveFavoritesUpdatedAt(value) {
   safeSetItem(STORAGE_KEYS.favoritesUpdatedAt, String(value));
+}
+
+export function saveDifficultsToLocalOnly(value) {
+  safeSetItem(STORAGE_KEYS.difficults, JSON.stringify(value));
 }
 
 export function saveChallengeModeState(value) {

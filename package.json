@@ -1,10 +1,10 @@
-{
+﻿{
   "name": "vocab-app",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node test/data.test.js"
+    "test": "node test/run-tests.js"
   },
   "engines": {
     "node": ">=18"
