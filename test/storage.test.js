@@ -1,4 +1,4 @@
-﻿import assert from "assert";
+import assert from "assert";
 import {
   safeGetItem,
   safeSetItem,
@@ -6,6 +6,7 @@ import {
   saveChallengeTimeState,
   saveFavoritesToLocalOnly,
   saveDifficultsToLocalOnly,
+  saveFrequencyModeState,
   saveIndexByVol
 } from "../storage.js";
 

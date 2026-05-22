@@ -7,9 +7,11 @@ export const STORAGE_KEYS = {
   favorites: "portfolio_tango_favorites",
   favoritesUpdatedAt: "portfolio_tango_favorites_updated_at",
   difficults: "portfolio_tango_difficults",
+  reviewScores: "portfolio_tango_review_scores",
   challengeMode: "portfolio_tango_challenge_mode",
   challengeTime: "portfolio_tango_challenge_time",
-  randomMode: "portfolio_tango_random_mode"
+  randomMode: "portfolio_tango_random_mode",
+  frequencyMode: "portfolio_tango_frequency_mode"
 };
 
 export function safeSetItem(key, value) {
@@ -61,6 +63,10 @@ export function saveDifficultsToLocalOnly(value) {
   safeSetItem(STORAGE_KEYS.difficults, JSON.stringify(value));
 }
 
+export function saveReviewScoresToLocalOnly(value) {
+  safeSetItem(STORAGE_KEYS.reviewScores, JSON.stringify(value));
+}
+
 export function saveChallengeModeState(value) {
   safeSetItem(STORAGE_KEYS.challengeMode, String(value));
 }
@@ -71,4 +77,8 @@ export function saveChallengeTimeState(value) {
 
 export function saveRandomModeState(value) {
   safeSetItem(STORAGE_KEYS.randomMode, String(value));
+}
+
+export function saveFrequencyModeState(value) {
+  safeSetItem(STORAGE_KEYS.frequencyMode, String(value));
 }

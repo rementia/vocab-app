@@ -1,0 +1,39 @@
+import assert from "assert";
+import {
+  getReviewScore,
+  getReviewWeight,
+  resetReviewScore,
+  sortByReviewScore,
+  updateReviewScore
+} from "../reviewManager.js";
+
+const item = { id: "vol1-1-alpha" };
+const scores = {};
+
+assert.strictEqual(getReviewScore(scores, item), 0);
+assert.strictEqual(updateReviewScore(scores, item, 1), 1);
+assert.strictEqual(getReviewScore(scores, item), 1);
+assert.strictEqual(updateReviewScore(scores, item, -1), 0);
+assert.strictEqual(getReviewScore(scores, item), 0);
+assert.strictEqual(Boolean(scores[item.id]), false, "zero scores should be removed from storage data");
+assert.strictEqual(updateReviewScore(scores, item, -10), -5);
+assert.strictEqual(updateReviewScore(scores, item, 20), 5);
+assert.strictEqual(resetReviewScore(scores, item), 0);
+assert.strictEqual(getReviewScore(scores, item), 0);
+assert.strictEqual(getReviewWeight(3) > getReviewWeight(-3), true, "higher scores should have higher random weight");
+const scoredItems = [
+  { id: "a" },
+  { id: "b" },
+  { id: "c" },
+  { id: "d" }
+];
+const sorted = sortByReviewScore(scoredItems, (candidate) => ({ a: 1, b: 3, c: 1, d: -2 })[candidate.id]);
+assert.strictEqual(sorted[0].id, "b", "highest score should come first");
+assert.strictEqual(sorted[3].id, "d", "lowest score should come last");
+assert.deepStrictEqual(
+  sorted.slice(1, 3).map((candidate) => candidate.id).sort(),
+  ["a", "c"],
+  "same score items should stay together between different scores"
+);
+
+console.log("All review score tests passed.");

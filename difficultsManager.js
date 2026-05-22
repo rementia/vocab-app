@@ -1,4 +1,4 @@
-﻿export function makeDifficultKey(item) {
+export function makeDifficultKey(item) {
   return item.id;
 }
 
@@ -76,12 +76,6 @@ export async function loadDifficultsMode(state, callbacks, volOrder) {
   state.currentMode = "difficults";
   callbacks.saveCurrentModeState("difficults");
 
-  if (state.randomMode) {
-    callbacks.setRandomMode(false);
-    state.randomMode = false;
-    callbacks.saveRandomModeState(false);
-    callbacks.updateRandomButton();
-  }
 
   callbacks.clearNavigationHistory();
   callbacks.applyWordOrder(false);
@@ -98,6 +92,7 @@ export async function loadDifficultsMode(state, callbacks, volOrder) {
   return {
     currentMode: state.currentMode,
     index: state.index,
-    randomMode: state.randomMode
+    randomMode: state.randomMode,
+    frequencyMode: state.frequencyMode
   };
 }

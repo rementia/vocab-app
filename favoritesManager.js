@@ -107,12 +107,6 @@ export async function loadFavoritesMode(state, callbacks, volOrder) {
   state.currentMode = "favorites";
   callbacks.saveCurrentModeState("favorites");
 
-  if (state.randomMode) {
-    callbacks.setRandomMode(false);
-    state.randomMode = false;
-    callbacks.saveRandomModeState(false);
-    callbacks.updateRandomButton();
-  }
 
   callbacks.clearNavigationHistory();
 
@@ -124,7 +118,9 @@ export async function loadFavoritesMode(state, callbacks, volOrder) {
     callbacks.updateFavoriteToggleButton();
     return {
       currentMode: state.currentMode,
-      index: state.index
+      index: state.index,
+      randomMode: state.randomMode,
+      frequencyMode: state.frequencyMode
     };
   }
 
@@ -148,6 +144,7 @@ export async function loadFavoritesMode(state, callbacks, volOrder) {
   return {
     currentMode: state.currentMode,
     index: state.index,
-    randomMode: state.randomMode
+    randomMode: state.randomMode,
+    frequencyMode: state.frequencyMode
   };
 }

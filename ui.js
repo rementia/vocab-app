@@ -16,6 +16,8 @@ export function renderApp(context, options = {}) {
   updateCurrentLabel(context);
   updateTopButtons(context);
   updateRandomButton(context);
+  updateFrequencyButton(context);
+  if (options.skipCurrentWord) updateReviewButtons(context);
   applySidebarState(context);
 }
 
@@ -66,14 +68,14 @@ export function renderList(context) {
     if (item && callbacks.isFavorite(item)) {
       const star = document.createElement("span");
       star.className = "item-star";
-      star.textContent = "★";
+      star.textContent = "☆";
       marks.appendChild(star);
     }
 
     if (item && callbacks.isDifficult(item)) {
       const difficult = document.createElement("span");
       difficult.className = "item-difficult";
-      difficult.textContent = "苦";
+      difficult.textContent = "△";
       marks.appendChild(difficult);
     }
 
@@ -109,7 +111,7 @@ function normalizeSearchText(value) {
 }
 
 function getListRenderVersion(state) {
-  return `${state.currentMode}|${state.currentVol}|${state.randomMode ? 1 : 0}|${state.listVersion}|${state.favoritesVersion}|${state.difficultsVersion}|${state.searchQuery}`;
+  return `${state.currentMode}|${state.currentVol}|${state.randomMode ? 1 : 0}|${state.frequencyMode ? 1 : 0}|${state.listVersion}|${state.favoritesVersion}|${state.difficultsVersion}|${state.searchQuery}`;
 }
 
 export function renderCurrentWord(context) {
@@ -133,7 +135,7 @@ export function renderCurrentWord(context) {
       dom.meaningEl.textContent = state.currentMode === "favorites"
         ? "☆を付けるとここに表示されます"
         : state.currentMode === "difficults"
-          ? "苦手を付けるとここに表示されます"
+          ? "△を付けるとここに表示されます"
           : "";
     }
     if (dom.progressEl) dom.progressEl.textContent = "";
@@ -142,6 +144,7 @@ export function renderCurrentWord(context) {
     if (dom.nextHintEl) dom.nextHintEl.textContent = "";
     updateFavoriteToggleButton(context);
     updateDifficultToggleButton(context);
+    updateReviewButtons(context);
     return;
   }
 
@@ -165,6 +168,7 @@ function updateCurrentStateMeta(context) {
   updateNavHints(context);
   updateFavoriteToggleButton(context);
   updateDifficultToggleButton(context);
+  updateReviewButtons(context);
   updateProgress(context);
 }
 
@@ -177,11 +181,14 @@ export function updateCurrentLabel(context) {
   let label = state.currentMode === "favorites"
     ? "☆"
     : state.currentMode === "difficults"
-      ? "苦手"
+      ? "△"
       : `vol.${state.currentVol.replace("vol", "")}`;
 
-  if (state.randomMode) {
-    label += " / ランダム";
+  const modeLabels = [];
+  if (state.frequencyMode) modeLabels.push("出題頻度");
+  if (state.randomMode) modeLabels.push("ランダム");
+  if (modeLabels.length) {
+    label += ` / ${modeLabels.join(" / ")}`;
   }
 
   dom.currentEl.textContent = label;
@@ -232,9 +239,9 @@ export function updateFavoriteToggleButton(context) {
   dom.favoriteToggleBtnEl.disabled = false;
 
   const active = callbacks.isFavorite(current);
-  dom.favoriteToggleBtnEl.textContent = active ? "★" : "☆";
+  dom.favoriteToggleBtnEl.textContent = "☆";
   dom.favoriteToggleBtnEl.classList.toggle("active", active);
-  dom.favoriteToggleBtnEl.title = active ? "★解除" : "★登録";
+  dom.favoriteToggleBtnEl.title = active ? "お気に入り解除" : "お気に入り登録";
   dom.favoriteToggleBtnEl.setAttribute("aria-label", active ? "お気に入り解除" : "お気に入り登録");
   dom.favoriteToggleBtnEl.setAttribute("aria-pressed", active ? "true" : "false");
 }
@@ -246,7 +253,7 @@ export function updateDifficultToggleButton(context) {
   if (!dom.difficultToggleBtnEl) return;
 
   if (!current) {
-    dom.difficultToggleBtnEl.textContent = "苦手";
+    dom.difficultToggleBtnEl.textContent = "△";
     dom.difficultToggleBtnEl.classList.remove("active");
     dom.difficultToggleBtnEl.title = "苦手に追加";
     dom.difficultToggleBtnEl.setAttribute("aria-label", "苦手に追加");
@@ -258,13 +265,43 @@ export function updateDifficultToggleButton(context) {
   dom.difficultToggleBtnEl.disabled = false;
 
   const active = callbacks.isDifficult(current);
-  dom.difficultToggleBtnEl.textContent = active ? "苦手中" : "苦手";
+  dom.difficultToggleBtnEl.textContent = "△";
   dom.difficultToggleBtnEl.classList.toggle("active", active);
   dom.difficultToggleBtnEl.title = active ? "苦手から外す" : "苦手に追加";
   dom.difficultToggleBtnEl.setAttribute("aria-label", active ? "苦手から外す" : "苦手に追加");
   dom.difficultToggleBtnEl.setAttribute("aria-pressed", active ? "true" : "false");
 }
 
+
+export function updateReviewButtons(context) {
+  const dom = getDom(context);
+  const callbacks = getCallbacks(context);
+  const current = callbacks.getCurrentWord();
+
+  if (!dom.decreaseReviewBtnEl || !dom.resetReviewBtnEl || !dom.increaseReviewBtnEl) return;
+
+  if (!current) {
+    if (dom.reviewScoreLabelEl) dom.reviewScoreLabelEl.textContent = "出題頻度：-";
+    setReviewButtonState(dom.decreaseReviewBtnEl, true, "出題頻度：-");
+    setReviewButtonState(dom.resetReviewBtnEl, true, "出題頻度：-");
+    setReviewButtonState(dom.increaseReviewBtnEl, true, "出題頻度：-");
+    return;
+  }
+
+  const score = callbacks.getReviewScore(current);
+  const label = `出題頻度：${score}`;
+  if (dom.reviewScoreLabelEl) dom.reviewScoreLabelEl.textContent = label;
+  setReviewButtonState(dom.decreaseReviewBtnEl, false, label);
+  setReviewButtonState(dom.resetReviewBtnEl, false, "出題頻度を0に戻す");
+  setReviewButtonState(dom.increaseReviewBtnEl, false, label);
+}
+
+function setReviewButtonState(button, disabled, label) {
+  button.disabled = disabled;
+  button.classList.remove("active");
+  button.setAttribute("aria-pressed", "false");
+  button.title = label;
+}
 export function updateNavHints(context) {
   const state = getState(context);
   const dom = getDom(context);
@@ -314,6 +351,10 @@ export function updateChallengeButton(context) {
 
 export function updateRandomButton(context) {
   updateToggleButton(context, getDom(context).randomBtnEl, "ランダム", getState(context).randomMode);
+}
+
+export function updateFrequencyButton(context) {
+  updateToggleButton(context, getDom(context).frequencyBtnEl, "出題頻度", getState(context).frequencyMode);
 }
 
 export function updateAuthUI(context) {

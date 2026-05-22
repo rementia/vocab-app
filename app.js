@@ -20,9 +20,11 @@ import {
   saveFavoritesToLocalOnly,
   saveFavoritesUpdatedAt,
   saveDifficultsToLocalOnly,
+  saveReviewScoresToLocalOnly,
   saveChallengeModeState,
   saveChallengeTimeState,
-  saveRandomModeState
+  saveRandomModeState,
+  saveFrequencyModeState
 } from './storage.js';
 import {
   renderApp,
@@ -30,8 +32,10 @@ import {
   updateAutoSpeakButton as uiUpdateAutoSpeakButton,
   updateChallengeButton as uiUpdateChallengeButton,
   updateRandomButton as uiUpdateRandomButton,
+  updateFrequencyButton as uiUpdateFrequencyButton,
   updateFavoriteToggleButton as uiUpdateFavoriteToggleButton,
   updateDifficultToggleButton as uiUpdateDifficultToggleButton,
+  updateReviewButtons as uiUpdateReviewButtons,
   applySidebarState as uiApplySidebarState,
   updateAuthUI as uiUpdateAuthUI
 } from './ui.js';
@@ -47,6 +51,13 @@ import {
   toggleDifficultCurrentWord as toggleDifficultCurrentWordManager,
   loadDifficultsMode as loadDifficultsModeManager
 } from './difficultsManager.js';
+import {
+  getReviewScore,
+  updateReviewScore,
+  resetReviewScore,
+  sortByReviewScore,
+  shuffleByReviewWeight
+} from './reviewManager.js';
 import {
   bindKeyboardEvents,
   bindTouchEvents,
@@ -77,7 +88,6 @@ import {
 } from './favorites.js';
 const {
   searchInputEl,
-  clearSearchBtnEl,
   listEl,
   sidebarEl,
   wordEl,
@@ -91,11 +101,16 @@ const {
   timeValue,
   favoriteToggleBtnEl,
   difficultToggleBtnEl,
+  reviewScoreLabelEl,
+  decreaseReviewBtnEl,
+  resetReviewBtnEl,
+  increaseReviewBtnEl,
   favoriteListBtnEl,
   difficultListBtnEl,
   autoSpeakBtnEl,
   challengeBtnEl,
   randomBtnEl,
+  frequencyBtnEl,
   loginBtnEl,
   logoutBtnEl,
   toggleSidebarBtnEl,
@@ -118,10 +133,12 @@ let sidebarOpen = true;
 let autoSpeak = false;
 let favorites = {};
 let difficults = {};
+let reviewScores = {};
 let favoritesUpdatedAt = 0;
 let challengeMode = false;
 let challengeTime = 1500;
 let randomMode = false;
+let frequencyMode = false;
 
 let meaningRevealTimer = null;
 let autoSpeakTimer = null;
@@ -132,6 +149,7 @@ let renderedListVersion = "";
 let listVersion = 0;
 let favoritesVersion = 0;
 let difficultsVersion = 0;
+let reviewScoresVersion = 0;
 let searchQuery = "";
 
 let indexByVol = createInitialIndexByVol();
@@ -142,11 +160,13 @@ const uiContext = {
     currentMode,
     currentVol,
     randomMode,
+    frequencyMode,
     listNeedsRebuild,
     renderedListVersion,
     listVersion,
     favoritesVersion,
     difficultsVersion,
+    reviewScoresVersion,
     searchQuery,
     index,
     challengeMode,
@@ -159,7 +179,6 @@ const uiContext = {
   }),
   dom: {
     searchInputEl,
-    clearSearchBtnEl,
     listEl,
     sidebarEl,
     wordEl,
@@ -171,11 +190,16 @@ const uiContext = {
     currentEl,
     favoriteToggleBtnEl,
     difficultToggleBtnEl,
+    reviewScoreLabelEl,
+    decreaseReviewBtnEl,
+    resetReviewBtnEl,
+    increaseReviewBtnEl,
     favoriteListBtnEl,
     difficultListBtnEl,
     autoSpeakBtnEl,
     challengeBtnEl,
     randomBtnEl,
+    frequencyBtnEl,
     loginBtnEl,
     logoutBtnEl,
     toggleSidebarBtnEl,
@@ -184,6 +208,7 @@ const uiContext = {
   callbacks: {
     isFavorite: (item) => isFavorite(favorites, item),
     isDifficult: (item) => isDifficult(difficults, item),
+    getReviewScore: (item) => getReviewScore(reviewScores, item),
     getCurrentWord,
     persistCurrentIndex,
     loadPronunciation,
@@ -232,8 +257,12 @@ async function init() {
     saveSidebarState(sidebarOpen);
     finishInitialLoading();
     scheduleAutoSpeakAfterRender();
-  }
-  else {
+  } else if (currentMode === "difficults") {
+    await handleLoadDifficultsMode();
+    saveSidebarState(sidebarOpen);
+    finishInitialLoading();
+    scheduleAutoSpeakAfterRender();
+  } else {
     // 初回通常モード時はシートを読み込んで初期表示を完了する
     await loadSheet(currentVol);
   }
@@ -243,20 +272,23 @@ const handleViewportResize = handleViewportChange(renderLayout);
 
 async function handleLoadFavoritesMode() {
   const result = await loadFavoritesModeManager(
-    { allWordsByVol, currentMode, currentVol, indexByVol, favorites, words, randomMode },
+    { allWordsByVol, currentMode, currentVol, indexByVol, favorites, words, randomMode, frequencyMode },
     {
       ensureAllVolumesLoaded,
       saveCurrentModeState,
       saveRandomModeState,
+      saveFrequencyModeState,
       clearNavigationHistory: navClearNavigationHistory,
       applyWordOrder,
       requestListRebuild,
       render,
       updateRandomButton,
+      updateFrequencyButton,
       getWords: () => words,
       getCurrentWord,
       setCurrentMode: (mode) => { currentMode = mode; },
-      setRandomMode: (value) => { randomMode = value; }
+      setRandomMode: (value) => { randomMode = value; },
+      setFrequencyMode: (value) => { frequencyMode = value; }
     },
     volOrder
   );
@@ -267,6 +299,9 @@ async function handleLoadFavoritesMode() {
     if (typeof result.randomMode === "boolean") {
       randomMode = result.randomMode;
     }
+    if (typeof result.frequencyMode === "boolean") {
+      frequencyMode = result.frequencyMode;
+    }
     scheduleAutoSpeakAfterRender();
   }
 }
@@ -274,20 +309,23 @@ async function handleLoadFavoritesMode() {
 
 async function handleLoadDifficultsMode() {
   const result = await loadDifficultsModeManager(
-    { allWordsByVol, currentMode, indexByVol, difficults, words, randomMode },
+    { allWordsByVol, currentMode, indexByVol, difficults, words, randomMode, frequencyMode },
     {
       ensureAllVolumesLoaded,
       saveCurrentModeState,
       saveRandomModeState,
+      saveFrequencyModeState,
       clearNavigationHistory: navClearNavigationHistory,
       applyWordOrder,
       requestListRebuild,
       render,
       updateRandomButton,
+      updateFrequencyButton,
       updateDifficultToggleButton,
       getWords: () => words,
       setCurrentMode: (mode) => { currentMode = mode; },
-      setRandomMode: (value) => { randomMode = value; }
+      setRandomMode: (value) => { randomMode = value; },
+      setFrequencyMode: (value) => { frequencyMode = value; }
     },
     volOrder
   );
@@ -297,6 +335,9 @@ async function handleLoadDifficultsMode() {
     index = result.index;
     if (typeof result.randomMode === "boolean") {
       randomMode = result.randomMode;
+    }
+    if (typeof result.frequencyMode === "boolean") {
+      frequencyMode = result.frequencyMode;
     }
     scheduleAutoSpeakAfterRender();
   }
@@ -369,6 +410,39 @@ function handleToggleDifficultCurrentWord() {
     scheduleAutoSpeakAfterRender();
   }
 }
+
+function handleReviewCurrentWord(delta, button) {
+  const current = getCurrentWord();
+  if (!current) return;
+
+  flashReviewButton(button);
+  updateReviewScore(reviewScores, current, delta);
+  finishReviewScoreChange();
+}
+
+function handleResetReviewCurrentWord() {
+  const current = getCurrentWord();
+  if (!current) return;
+
+  flashReviewButton(resetReviewBtnEl);
+  resetReviewScore(reviewScores, current);
+  finishReviewScoreChange();
+}
+
+function finishReviewScoreChange() {
+  reviewScoresVersion += 1;
+  saveReviewScoresToLocalOnly(reviewScores);
+  renderLayout();
+  updateReviewButtons();
+}
+function flashReviewButton(button) {
+  if (!button) return;
+  button.classList.remove("review-flash");
+  void button.offsetWidth;
+  button.classList.add("review-flash");
+  window.setTimeout(() => button.classList.remove("review-flash"), 500);
+}
+
 function finishInitialLoading() {
   if (hasFinishedInitialLoading) return;
   hasFinishedInitialLoading = true;
@@ -389,10 +463,18 @@ function bindUIEvents() {
   autoSpeakBtnEl?.addEventListener("click", toggleAutoSpeak);
   challengeBtnEl?.addEventListener("click", toggleChallengeMode);
   randomBtnEl?.addEventListener("click", toggleRandomMode);
+  frequencyBtnEl?.addEventListener("click", toggleFrequencyMode);
   favoriteListBtnEl?.addEventListener("click", handleLoadFavoritesMode);
   difficultListBtnEl?.addEventListener("click", handleLoadDifficultsMode);
   favoriteToggleBtnEl?.addEventListener("click", handleToggleFavoriteCurrentWord);
   difficultToggleBtnEl?.addEventListener("click", handleToggleDifficultCurrentWord);
+  decreaseReviewBtnEl?.addEventListener("click", () => handleReviewCurrentWord(-1, decreaseReviewBtnEl));
+  resetReviewBtnEl?.addEventListener("click", handleResetReviewCurrentWord);
+  increaseReviewBtnEl?.addEventListener("click", () => handleReviewCurrentWord(1, increaseReviewBtnEl));
+  [decreaseReviewBtnEl, resetReviewBtnEl, increaseReviewBtnEl].forEach((button) => {
+    button?.addEventListener("mouseenter", updateReviewButtons);
+    button?.addEventListener("focus", updateReviewButtons);
+  });
   prevWordBtnEl?.addEventListener("click", prevWord);
   nextWordBtnEl?.addEventListener("click", nextWord);
   speakWordBtnEl?.addEventListener("click", speakWord);
@@ -403,12 +485,6 @@ function bindUIEvents() {
     renderLayout();
   });
 
-  clearSearchBtnEl?.addEventListener("click", () => {
-    setSearchQuery("");
-    requestListRebuild();
-    renderLayout();
-    searchInputEl?.focus();
-  });
   if (timeSlider && timeValue) {
     timeSlider.value = challengeTime / 1000;
     timeValue.textContent = (challengeTime / 1000).toFixed(1);
@@ -451,10 +527,12 @@ function loadSavedState() {
   const savedIndexByVol = safeGetItem(STORAGE_KEYS.indexByVol);
   const savedFavorites = safeGetItem(STORAGE_KEYS.favorites);
   const savedDifficults = safeGetItem(STORAGE_KEYS.difficults);
+  const savedReviewScores = safeGetItem(STORAGE_KEYS.reviewScores);
   const savedFavoritesUpdatedAt = safeGetItem(STORAGE_KEYS.favoritesUpdatedAt);
   const savedChallengeMode = safeGetItem(STORAGE_KEYS.challengeMode);
   const savedChallengeTime = safeGetItem(STORAGE_KEYS.challengeTime);
   const savedRandomMode = safeGetItem(STORAGE_KEYS.randomMode);
+  const savedFrequencyMode = safeGetItem(STORAGE_KEYS.frequencyMode);
   const savedMode = safeGetItem(STORAGE_KEYS.mode);
 
   if (savedVol && sheetUrls[savedVol]) currentVol = savedVol;
@@ -491,6 +569,15 @@ function loadSavedState() {
       difficults = {};
     }
   }
+  if (savedReviewScores) {
+    try {
+      const parsedReviewScores = JSON.parse(savedReviewScores);
+      reviewScores = parsedReviewScores && typeof parsedReviewScores === "object" ? parsedReviewScores : {};
+    } catch {
+      reviewScores = {};
+    }
+  }
+
   if (savedFavoritesUpdatedAt) {
     favoritesUpdatedAt = Number(savedFavoritesUpdatedAt) || 0;
   }
@@ -505,10 +592,12 @@ function loadSavedState() {
   }
 
   if (savedRandomMode !== null) randomMode = savedRandomMode === "true";
+  if (savedFrequencyMode !== null) frequencyMode = savedFrequencyMode === "true";
 
   updateAutoSpeakButton();
   updateChallengeButton();
   updateRandomButton();
+  updateFrequencyButton();
   applySidebarState();
 }
 
@@ -629,10 +718,13 @@ async function preloadOtherVolumesInBackground() {
   await Promise.all(otherVols.map((vol) => ensureVolLoaded(vol).catch(() => {})));
 }
 
-function makeShuffleKey() {
-  if (currentMode === "favorites") return "favorites:all";
-  if (currentMode === "difficults") return "difficults:all";
-  return `vol:${currentVol}`;
+function makeShuffleKey(orderMode) {
+  const scope = currentMode === "favorites"
+    ? "favorites:all"
+    : currentMode === "difficults"
+      ? "difficults:all"
+      : `vol:${currentVol}`;
+  return `${orderMode}:${scope}`;
 }
 
 function shuffleArray(array) {
@@ -651,8 +743,13 @@ function applyWordOrder(resetIndex = false, preserveCurrentId = null) {
       ? buildDifficultEntries(allWordsByVol, volOrder, difficults)
       : [...(allWordsByVol[currentVol] || [])];
 
-  if (randomMode) {
-    const shuffleKey = makeShuffleKey();
+  if (randomMode || frequencyMode) {
+    const orderMode = randomMode && frequencyMode
+      ? "frequency-random"
+      : frequencyMode
+        ? "frequency"
+        : "random";
+    const shuffleKey = makeShuffleKey(orderMode);
     const currentCache = shuffledWordsMap[shuffleKey];
 
     const cacheValid =
@@ -661,7 +758,11 @@ function applyWordOrder(resetIndex = false, preserveCurrentId = null) {
       currentCache.every((item) => baseWords.some((base) => base.id === item.id));
 
     if (!cacheValid) {
-      shuffledWordsMap[shuffleKey] = shuffleArray(baseWords);
+      shuffledWordsMap[shuffleKey] = randomMode && frequencyMode
+        ? shuffleByReviewWeight(baseWords, (item) => getReviewScore(reviewScores, item))
+        : frequencyMode
+          ? sortByReviewScore(baseWords, (item) => getReviewScore(reviewScores, item))
+          : shuffleArray(baseWords);
     }
 
     words = shuffledWordsMap[shuffleKey];
@@ -740,12 +841,20 @@ function updateRandomButton() {
   uiUpdateRandomButton(uiContext);
 }
 
+function updateFrequencyButton() {
+  uiUpdateFrequencyButton(uiContext);
+}
+
 function updateFavoriteToggleButton() {
   uiUpdateFavoriteToggleButton(uiContext);
 }
 
 function updateDifficultToggleButton() {
   uiUpdateDifficultToggleButton(uiContext);
+}
+
+function updateReviewButtons() {
+  uiUpdateReviewButtons(uiContext);
 }
 
 function applySidebarState() {
@@ -818,10 +927,7 @@ function toggleRandomMode() {
   saveRandomModeState(randomMode);
   updateRandomButton();
   navClearNavigationHistory();
-
-  if (!randomMode) {
-    clearAllShuffleCache();
-  }
+  clearAllShuffleCache();
 
   applyWordOrder(false, currentId);
   requestListRebuild();
@@ -829,6 +935,19 @@ function toggleRandomMode() {
   scheduleAutoSpeakAfterRender();
 }
 
+function toggleFrequencyMode() {
+  const currentId = getCurrentWord()?.id || null;
+  frequencyMode = !frequencyMode;
+  saveFrequencyModeState(frequencyMode);
+  updateFrequencyButton();
+  navClearNavigationHistory();
+  clearAllShuffleCache();
+
+  applyWordOrder(false, currentId);
+  requestListRebuild();
+  render();
+  scheduleAutoSpeakAfterRender();
+}
 function prevWord() {
   if (!words.length) return;
 
