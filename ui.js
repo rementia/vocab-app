@@ -331,11 +331,6 @@ export function updateProgress(context) {
 
   if (!dom.progressEl) return;
 
-  if (state.randomMode) {
-    dom.progressEl.textContent = "";
-    return;
-  }
-
   const total = state.words.length;
   const current = total === 0 ? 0 : state.index + 1;
   dom.progressEl.textContent = `${current} / ${total}`;

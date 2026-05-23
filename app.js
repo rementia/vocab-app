@@ -935,28 +935,26 @@ function toggleChallengeMode() {
 }
 
 function toggleRandomMode() {
-  const currentId = getCurrentWord()?.id || null;
   randomMode = !randomMode;
   saveRandomModeState(randomMode);
   updateRandomButton();
   navClearNavigationHistory();
   clearAllShuffleCache();
 
-  applyWordOrder(false, currentId);
+  applyWordOrder(true);
   requestListRebuild();
   render();
   scheduleAutoSpeakAfterRender();
 }
 
 function toggleFrequencyMode() {
-  const currentId = getCurrentWord()?.id || null;
   frequencyMode = !frequencyMode;
   saveFrequencyModeState(frequencyMode);
   updateFrequencyButton();
   navClearNavigationHistory();
   clearAllShuffleCache();
 
-  applyWordOrder(false, currentId);
+  applyWordOrder(true);
   requestListRebuild();
   render();
   scheduleAutoSpeakAfterRender();
