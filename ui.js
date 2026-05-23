@@ -184,12 +184,7 @@ export function updateCurrentLabel(context) {
       ? "△"
       : `vol.${state.currentVol.replace("vol", "")}`;
 
-  const modeLabels = [];
-  if (state.frequencyMode) modeLabels.push("頻度配列");
-  if (state.randomMode) modeLabels.push("乱数配列");
-  if (modeLabels.length) {
-    label += ` / ${modeLabels.join(" / ")}`;
-  }
+
 
   dom.currentEl.textContent = label;
 }

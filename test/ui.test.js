@@ -32,7 +32,7 @@ const labelContext = {
   })
 };
 updateCurrentLabel(labelContext);
-assert.strictEqual(labelContext.dom.currentEl.textContent, "vol.4 / 頻度配列 / 乱数配列");
+assert.strictEqual(labelContext.dom.currentEl.textContent, "vol.4");
 
 function makeButton() {
   return {
