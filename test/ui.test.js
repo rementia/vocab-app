@@ -1,5 +1,5 @@
 import assert from "assert";
-import { updateAuthUI, updateCurrentLabel, updateReviewButtons } from "../ui.js";
+import { renderCurrentWord, updateAuthUI, updateCurrentLabel, updateReviewButtons } from "../ui.js";
 
 function makeContext(currentUser) {
   return {
@@ -66,6 +66,58 @@ assert.strictEqual(reviewContext.dom.reviewScoreLabelEl.textContent, "頻度調�
 assert.strictEqual(reviewContext.dom.decreaseReviewBtnEl.title, "頻度調整：2");
 assert.strictEqual(reviewContext.dom.increaseReviewBtnEl.title, "頻度調整：2");
 assert.strictEqual(reviewContext.dom.resetReviewBtnEl.title, "頻度調整を0に戻す");
+
+function makeWordContext(translationMode) {
+  return {
+    getState: () => ({
+      words: [{ word: "create", meaning: "作る" }],
+      index: 0,
+      currentMode: "vol",
+      currentVol: "vol1",
+      translationMode,
+      challengeMode: false,
+      challengeTime: 1500,
+      randomMode: false,
+      historyBackStack: [],
+      historyForwardStack: []
+    }),
+    dom: {
+      wordEl: { textContent: "" },
+      meaningEl: { textContent: "" },
+      progressEl: { textContent: "" },
+      listEl: { querySelector: () => null },
+      favoriteToggleBtnEl: null,
+      difficultToggleBtnEl: null,
+      decreaseReviewBtnEl: null,
+      resetReviewBtnEl: null,
+      increaseReviewBtnEl: null,
+      prevHintEl: null,
+      nextHintEl: null
+    },
+    callbacks: {
+      clearMeaningRevealTimer() {},
+      clearAutoSpeakTimer() {},
+      clearAutoPlayTimer() {},
+      getCurrentWord: () => ({ word: "create", meaning: "作る" }),
+      persistCurrentIndex() {},
+      loadPronunciation() {},
+      isFavorite: () => false,
+      isDifficult: () => false,
+      getReviewScore: () => 0
+    }
+  };
+}
+
+const normalWordContext = makeWordContext(false);
+renderCurrentWord(normalWordContext);
+assert.strictEqual(normalWordContext.dom.wordEl.textContent, "create");
+assert.strictEqual(normalWordContext.dom.meaningEl.textContent, "作る");
+
+const translatedWordContext = makeWordContext(true);
+renderCurrentWord(translatedWordContext);
+assert.strictEqual(translatedWordContext.dom.wordEl.textContent, "作る");
+assert.strictEqual(translatedWordContext.dom.meaningEl.textContent, "create");
+
 reviewIndex = 1;
 updateReviewButtons(reviewContext);
 assert.strictEqual(reviewContext.dom.reviewScoreLabelEl.textContent, "頻度調整：-1");

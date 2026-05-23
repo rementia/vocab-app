@@ -53,11 +53,11 @@
         </div>
         <div class="recall-time-control">
           <label for="timeSlider">
-            Recall Time:
+            想起時間:
             <span id="timeValue">1.5</span>s
           </label>
 
-          <input type="range" id="timeSlider" min="0.5" max="5" step="0.1" value="1.5">
+          <input type="range" id="timeSlider" min="0" max="3" step="0.1" value="1.5">
         </div>
       </div>
 
@@ -66,10 +66,10 @@
           <button
             class="control-btn auto-speak-btn"
             id="autoSpeakBtn"
-            aria-label="自動発音"
+            aria-label="発音同期"
             aria-pressed="false"
           >
-            自動発音
+            発音同期
           </button>
 
           <button
@@ -82,6 +82,33 @@
           </button>
 
           <button
+            class="control-btn translation-btn"
+            id="translationBtn"
+            aria-label="訳語切替"
+            aria-pressed="false"
+          >
+            訳語切替
+          </button>
+
+          <button
+            class="control-btn auto-play-btn"
+            id="autoPlayBtn"
+            aria-label="自動再生"
+            aria-pressed="false"
+          >
+            自動再生
+          </button>
+
+          <button
+            class="control-btn frequency-btn"
+            id="frequencyBtn"
+            aria-label="頻度配列"
+            aria-pressed="false"
+          >
+            頻度配列
+          </button>
+
+          <button
             class="control-btn random-btn"
             id="randomBtn"
             aria-label="乱数配列"
@@ -89,20 +116,11 @@
           >
             乱数配列
           </button>
-
-          <button
-            class="control-btn frequency-btn"
-            id="frequencyBtn"
-            aria-label="頻度配列モード"
-            aria-pressed="false"
-          >
-            頻度配列
-          </button>
         </div>
       </div>
     </header>
 
-    <button class="login-btn" id="loginBtn">Googleログイン</button>
+    <button class="login-btn" id="loginBtn">Google でログイン</button>
     <button class="login-btn" id="logoutBtn" hidden>ログアウト</button>
 
     <aside class="sidebar" id="sidebar" aria-label="単語一覧">

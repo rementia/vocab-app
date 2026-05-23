@@ -1,4 +1,4 @@
-﻿/* Design tokens */
+/* Design tokens */
 :root {
   --app-bg: #ffffff;
   --app-text: #111111;
@@ -114,6 +114,7 @@ body.loading {
   color: var(--accent-contrast);
   border-color: var(--border-strong);
 }
+
 
 .speak-btn {
   background: var(--accent);
@@ -266,6 +267,11 @@ body.loading {
   text-align: center;
   font-size: 12px;
   color: var(--muted-text);
+}
+
+
+.recall-time-control.is-inactive {
+  opacity: 0.52;
 }
 
 .recall-time-control input {
@@ -691,7 +697,12 @@ body.loading {
 @media (max-width: 768px) and (orientation: landscape) {
   :root {
     --login-bottom: 8px;
-    --login-right: 8px;
+    --login-left: 0px;
+  }
+
+  .login-btn {
+    left: var(--login-left);
+    right: auto;
   }
 
   .app {
@@ -724,7 +735,7 @@ body.loading {
   .review-panel {
     position: absolute;
     right: 0px;
-    top: 50%;
+    top: 70%;
     margin-top: 0;
     width: 164px;
     max-width: calc(100vw - 16px);

@@ -15,6 +15,9 @@ export function renderApp(context, options = {}) {
   if (!options.skipCurrentWord) renderCurrentWord(context);
   updateCurrentLabel(context);
   updateTopButtons(context);
+  updateRecallTimeControl(context);
+  updateTranslationButton(context);
+  updateAutoPlayButton(context);
   updateRandomButton(context);
   updateFrequencyButton(context);
   if (options.skipCurrentWord) updateReviewButtons(context);
@@ -149,14 +152,15 @@ export function renderCurrentWord(context) {
   }
 
   renderWordText(context, current);
-  updateMeaningDisplay(context, current.meaning);
+  updateMeaningDisplay(context, state.translationMode ? current.word : current.meaning);
   updateCurrentStateMeta(context);
   callbacks.loadPronunciation(current.word);
 }
 
 function renderWordText(context, current) {
+  const state = getState(context);
   const dom = getDom(context);
-  if (dom.wordEl) dom.wordEl.textContent = current.word;
+  if (dom.wordEl) dom.wordEl.textContent = state.translationMode ? current.meaning : current.word;
 }
 
 function updateCurrentStateMeta(context) {
@@ -331,12 +335,25 @@ export function updateProgress(context) {
   dom.progressEl.textContent = `${current} / ${total}`;
 }
 
+export function updateRecallTimeControl(context) {
+  const state = getState(context);
+  const dom = getDom(context);
+  dom.recallTimeControlEl?.classList.toggle("is-inactive", !state.challengeMode);
+}
 export function updateAutoSpeakButton(context) {
-  updateToggleButton(context, getDom(context).autoSpeakBtnEl, "自動発音", getState(context).autoSpeak);
+  updateToggleButton(context, getDom(context).autoSpeakBtnEl, "発音同期", getState(context).autoSpeak);
 }
 
 export function updateChallengeButton(context) {
   updateToggleButton(context, getDom(context).challengeBtnEl, "想起学習", getState(context).challengeMode);
+}
+
+export function updateTranslationButton(context) {
+  updateToggleButton(context, getDom(context).translationBtnEl, "訳語切替", getState(context).translationMode);
+}
+
+export function updateAutoPlayButton(context) {
+  updateToggleButton(context, getDom(context).autoPlayBtnEl, "自動再生", getState(context).autoPlay);
 }
 
 export function updateRandomButton(context) {
