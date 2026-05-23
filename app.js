@@ -55,8 +55,7 @@ import {
   getReviewScore,
   updateReviewScore,
   resetReviewScore,
-  sortByReviewScore,
-  shuffleByReviewWeight
+  sortByReviewScore
 } from './reviewManager.js';
 import {
   bindKeyboardEvents,
@@ -252,6 +251,8 @@ async function init() {
     window.visualViewport.addEventListener("resize", handleViewportResize);
   }
 
+  handleViewportResize();
+
   if (currentMode === "favorites") {
     await handleLoadFavoritesMode();
     saveSidebarState(sidebarOpen);
@@ -284,6 +285,7 @@ async function handleLoadFavoritesMode() {
       render,
       updateRandomButton,
       updateFrequencyButton,
+      updateFavoriteToggleButton,
       getWords: () => words,
       getCurrentWord,
       setCurrentMode: (mode) => { currentMode = mode; },
@@ -520,6 +522,9 @@ function bindUIEvents() {
   });
 }
 
+function getDefaultSidebarOpen() {
+  return !window.matchMedia?.("(pointer: coarse)").matches;
+}
 function loadSavedState() {
   const savedVol = safeGetItem(STORAGE_KEYS.vol);
   const savedSidebarOpen = safeGetItem(STORAGE_KEYS.sidebarOpen);
@@ -536,7 +541,7 @@ function loadSavedState() {
   const savedMode = safeGetItem(STORAGE_KEYS.mode);
 
   if (savedVol && sheetUrls[savedVol]) currentVol = savedVol;
-  if (savedSidebarOpen !== null) sidebarOpen = savedSidebarOpen === "true";
+  sidebarOpen = savedSidebarOpen !== null ? savedSidebarOpen === "true" : getDefaultSidebarOpen();
   if (savedAutoSpeak !== null) autoSpeak = savedAutoSpeak === "true";
 
   if (savedIndexByVol) {
@@ -685,7 +690,16 @@ async function ensureVolLoaded(volName) {
 }
 
 async function ensureAllVolumesLoaded() {
-  await Promise.all(volOrder.map((vol) => ensureVolLoaded(vol)));
+  const results = await Promise.allSettled(volOrder.map((vol) => ensureVolLoaded(vol)));
+  const failures = results.filter((result) => result.status === "rejected");
+
+  if (failures.length === results.length) {
+    throw failures[0].reason;
+  }
+
+  if (failures.length > 0) {
+    console.warn("Some volumes failed to load", failures.map((failure) => failure.reason));
+  }
 }
 
 async function loadSheet(volName) {
@@ -697,6 +711,7 @@ async function loadSheet(volName) {
     saveCurrentModeState(currentMode);
     // 指定ボリュームを先に読み込み、words を確実に設定する
     await ensureVolLoaded(volName);
+    clearAllShuffleCache();
     applyWordOrder();
     index = Math.min(indexByVol[volName] || 0, Math.max(words.length - 1, 0));
 
@@ -758,11 +773,9 @@ function applyWordOrder(resetIndex = false, preserveCurrentId = null) {
       currentCache.every((item) => baseWords.some((base) => base.id === item.id));
 
     if (!cacheValid) {
-      shuffledWordsMap[shuffleKey] = randomMode && frequencyMode
-        ? shuffleByReviewWeight(baseWords, (item) => getReviewScore(reviewScores, item))
-        : frequencyMode
-          ? sortByReviewScore(baseWords, (item) => getReviewScore(reviewScores, item))
-          : shuffleArray(baseWords);
+      shuffledWordsMap[shuffleKey] = frequencyMode
+        ? sortByReviewScore(baseWords, (item) => getReviewScore(reviewScores, item), { randomizeTies: randomMode })
+        : shuffleArray(baseWords);
     }
 
     words = shuffledWordsMap[shuffleKey];

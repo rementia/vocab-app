@@ -5,7 +5,7 @@ export async function signInWithGoogle(auth, provider) {
     await signInWithPopup(auth, provider);
   } catch (error) {
     console.error("Googleログイン失敗:", error);
-    alert("ログインに失敗しました。");
+    alert(`ログインに失敗しました。${error.code ? `\n${error.code}` : ""}`);
   }
 }
 

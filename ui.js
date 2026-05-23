@@ -185,8 +185,8 @@ export function updateCurrentLabel(context) {
       : `vol.${state.currentVol.replace("vol", "")}`;
 
   const modeLabels = [];
-  if (state.frequencyMode) modeLabels.push("出題頻度");
-  if (state.randomMode) modeLabels.push("ランダム");
+  if (state.frequencyMode) modeLabels.push("頻度配列");
+  if (state.randomMode) modeLabels.push("乱数配列");
   if (modeLabels.length) {
     label += ` / ${modeLabels.join(" / ")}`;
   }
@@ -281,18 +281,18 @@ export function updateReviewButtons(context) {
   if (!dom.decreaseReviewBtnEl || !dom.resetReviewBtnEl || !dom.increaseReviewBtnEl) return;
 
   if (!current) {
-    if (dom.reviewScoreLabelEl) dom.reviewScoreLabelEl.textContent = "出題頻度：-";
-    setReviewButtonState(dom.decreaseReviewBtnEl, true, "出題頻度：-");
-    setReviewButtonState(dom.resetReviewBtnEl, true, "出題頻度：-");
-    setReviewButtonState(dom.increaseReviewBtnEl, true, "出題頻度：-");
+    if (dom.reviewScoreLabelEl) dom.reviewScoreLabelEl.textContent = "頻度調整：-";
+    setReviewButtonState(dom.decreaseReviewBtnEl, true, "頻度調整：-");
+    setReviewButtonState(dom.resetReviewBtnEl, true, "頻度調整：-");
+    setReviewButtonState(dom.increaseReviewBtnEl, true, "頻度調整：-");
     return;
   }
 
   const score = callbacks.getReviewScore(current);
-  const label = `出題頻度：${score}`;
+  const label = `頻度調整：${score}`;
   if (dom.reviewScoreLabelEl) dom.reviewScoreLabelEl.textContent = label;
   setReviewButtonState(dom.decreaseReviewBtnEl, false, label);
-  setReviewButtonState(dom.resetReviewBtnEl, false, "出題頻度を0に戻す");
+  setReviewButtonState(dom.resetReviewBtnEl, false, "頻度調整を0に戻す");
   setReviewButtonState(dom.increaseReviewBtnEl, false, label);
 }
 
@@ -350,11 +350,11 @@ export function updateChallengeButton(context) {
 }
 
 export function updateRandomButton(context) {
-  updateToggleButton(context, getDom(context).randomBtnEl, "ランダム", getState(context).randomMode);
+  updateToggleButton(context, getDom(context).randomBtnEl, "乱数配列", getState(context).randomMode);
 }
 
 export function updateFrequencyButton(context) {
-  updateToggleButton(context, getDom(context).frequencyBtnEl, "出題頻度", getState(context).frequencyMode);
+  updateToggleButton(context, getDom(context).frequencyBtnEl, "頻度配列", getState(context).frequencyMode);
 }
 
 export function updateAuthUI(context) {

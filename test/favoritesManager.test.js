@@ -74,4 +74,37 @@ assert.strictEqual(applyCalls, 1);
 assert.strictEqual(rendered, 1);
 assert.strictEqual(listRebuilds, 1);
 
+
+const emptyState = {
+  allWordsByVol: {},
+  currentMode: "vol",
+  currentVol: "vol1",
+  indexByVol: { favorites: 0 },
+  favorites: {},
+  words: [],
+  randomMode: false,
+  frequencyMode: false
+};
+let emptyRendered = 0;
+let emptyListRebuilds = 0;
+const emptyResult = await loadFavoritesMode(
+  emptyState,
+  {
+    ensureAllVolumesLoaded: async () => { throw new Error("empty favorites should not load volumes"); },
+    setCurrentMode: (mode) => { emptyState.currentMode = mode; },
+    saveCurrentModeState: () => {},
+    clearNavigationHistory: () => {},
+    applyWordOrder: () => { emptyState.words = []; },
+    getWords: () => emptyState.words,
+    getCurrentWord: () => null,
+    requestListRebuild: () => { emptyListRebuilds += 1; },
+    render: () => { emptyRendered += 1; },
+    updateFavoriteToggleButton: () => {}
+  },
+  ["vol1", "vol2"]
+);
+assert.strictEqual(emptyResult.currentMode, "favorites");
+assert.strictEqual(emptyResult.index, 0);
+assert.strictEqual(emptyRendered, 1);
+assert.strictEqual(emptyListRebuilds, 1);
 console.log("All favorite word tests passed.");

@@ -112,12 +112,22 @@ export function isSwipeAllowedTarget(target) {
   return true;
 }
 
+function resetPageOffset() {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
 export function handleViewportChange(render) {
   let viewportResizeTimer = null;
+
   return () => {
     clearTimeout(viewportResizeTimer);
+    resetPageOffset();
+    requestAnimationFrame(resetPageOffset);
     viewportResizeTimer = setTimeout(() => {
+      resetPageOffset();
       render();
-    }, 250);
+    }, 180);
   };
 }

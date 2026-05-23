@@ -100,15 +100,28 @@ export function toggleFavoriteCurrentWord(state, callbacks) {
 }
 
 export async function loadFavoritesMode(state, callbacks, volOrder) {
-  await callbacks.ensureAllVolumesLoaded();
-
-  const favoriteEntries = buildFavoriteEntries(state.allWordsByVol, volOrder, state.favorites);
   callbacks.setCurrentMode("favorites");
   state.currentMode = "favorites";
   callbacks.saveCurrentModeState("favorites");
-
-
   callbacks.clearNavigationHistory();
+
+  const hasFavorites = Object.keys(state.favorites || {}).length > 0;
+  if (!hasFavorites) {
+    callbacks.applyWordOrder(true);
+    state.index = 0;
+    callbacks.requestListRebuild();
+    callbacks.render();
+    callbacks.updateFavoriteToggleButton();
+    return {
+      currentMode: state.currentMode,
+      index: state.index,
+      randomMode: state.randomMode,
+      frequencyMode: state.frequencyMode
+    };
+  }
+
+  await callbacks.ensureAllVolumesLoaded();
+  const favoriteEntries = buildFavoriteEntries(state.allWordsByVol, volOrder, state.favorites);
 
   if (favoriteEntries.length === 0) {
     callbacks.applyWordOrder(true);

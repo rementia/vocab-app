@@ -1,7 +1,6 @@
 import assert from "assert";
 import {
   getReviewScore,
-  getReviewWeight,
   resetReviewScore,
   sortByReviewScore,
   updateReviewScore
@@ -20,7 +19,7 @@ assert.strictEqual(updateReviewScore(scores, item, -10), -5);
 assert.strictEqual(updateReviewScore(scores, item, 20), 5);
 assert.strictEqual(resetReviewScore(scores, item), 0);
 assert.strictEqual(getReviewScore(scores, item), 0);
-assert.strictEqual(getReviewWeight(3) > getReviewWeight(-3), true, "higher scores should have higher random weight");
+
 const scoredItems = [
   { id: "a" },
   { id: "b" },
@@ -31,9 +30,23 @@ const sorted = sortByReviewScore(scoredItems, (candidate) => ({ a: 1, b: 3, c: 1
 assert.strictEqual(sorted[0].id, "b", "highest score should come first");
 assert.strictEqual(sorted[3].id, "d", "lowest score should come last");
 assert.deepStrictEqual(
-  sorted.slice(1, 3).map((candidate) => candidate.id).sort(),
+  sorted.slice(1, 3).map((candidate) => candidate.id),
   ["a", "c"],
-  "same score items should stay together between different scores"
+  "same score items should keep original order by default"
+);
+
+const stableTieSorted = sortByReviewScore(scoredItems, () => 1);
+assert.deepStrictEqual(
+  stableTieSorted.map((candidate) => candidate.id),
+  ["a", "b", "c", "d"],
+  "same score items should keep original order unless tie randomization is requested"
+);
+
+const randomizedTieSorted = sortByReviewScore(scoredItems, () => 1, { randomizeTies: true });
+assert.deepStrictEqual(
+  randomizedTieSorted.map((candidate) => candidate.id).sort(),
+  ["a", "b", "c", "d"],
+  "tie randomization should keep the same items"
 );
 
 console.log("All review score tests passed.");
