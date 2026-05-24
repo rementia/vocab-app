@@ -73,6 +73,55 @@ This app is designed with the following principles:
 - Make review more efficient by focusing on difficult words
 - Keep the interface simple and usable on both PC and mobile devices
 
+## Login and Data Storage
+
+This app can be used with or without Google login.
+
+### When using without login
+
+If you do not log in, your learning state is saved only in the browser's localStorage.
+
+Examples of locally saved data:
+
+- selected volume
+- current word position
+- app mode
+- local settings
+
+This data stays only in the same browser and device.  
+It is not shared across devices.
+
+### When using Google login
+
+Google login is used through Firebase Authentication.
+
+When you log in, Firebase Authentication manages login information such as your user ID and email address.
+
+The app uses Cloud Firestore to save user-specific learning data, such as:
+
+- favorite words
+- last updated time
+- user-specific app state
+
+This data is used only to provide the learning and favorite features of this app.
+
+### GitHub Pages and Firebase
+
+This app is hosted on GitHub Pages, but Google login is handled by Firebase Authentication.
+
+Logging in to this app is different from logging in to GitHub.
+
+GitHub does not manage your app login data.
+
+### Authorized domains
+
+For Google login to work on GitHub Pages, the GitHub Pages domain must be added to the Firebase Authentication authorized domains list.
+
+Example:
+
+```text
+your-username.github.io
+
 ## Copyright Notice
 
 This project is intended for portfolio and learning purposes.
