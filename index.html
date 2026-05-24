@@ -51,13 +51,24 @@
             △
           </button>
         </div>
-        <div class="recall-time-control">
-          <label for="timeSlider">
-            想起時間:
-            <span id="timeValue">1.5</span>s
-          </label>
+        <div class="time-controls">
+          <div class="recall-time-control">
+            <label for="timeSlider">
+              想起時間:
+              <span id="timeValue">1.5</span>s
+            </label>
 
-          <input type="range" id="timeSlider" min="0" max="3" step="0.1" value="1.5">
+            <input type="range" id="timeSlider" min="0" max="3" step="0.1" value="1.5">
+          </div>
+
+          <div class="display-time-control">
+            <label for="displayTimeSlider">
+              表示時間:
+              <span id="displayTimeValue">1.5</span>s
+            </label>
+
+            <input type="range" id="displayTimeSlider" min="0" max="3" step="0.1" value="1.5">
+          </div>
         </div>
       </div>
 
@@ -100,21 +111,21 @@
           </button>
 
           <button
-            class="control-btn frequency-btn"
-            id="frequencyBtn"
-            aria-label="頻度配列"
-            aria-pressed="false"
-          >
-            頻度配列
-          </button>
-
-          <button
             class="control-btn random-btn"
             id="randomBtn"
             aria-label="乱数配列"
             aria-pressed="false"
           >
             乱数配列
+          </button>
+
+          <button
+            class="control-btn frequency-btn"
+            id="frequencyBtn"
+            aria-label="頻度配列"
+            aria-pressed="false"
+          >
+            頻度配列
           </button>
         </div>
       </div>
@@ -208,7 +219,7 @@
           </div>
 
           <div class="help-line">
-            ← → : 前後移動　/　Space : 発音　/　F : ☆　/　R : 乱数配列
+            ← → : 前後移動　｜　Space : 発音　｜　F : ☆　｜　D : △　｜　+ - 0 : 頻度調整　｜　/ : 検索　｜　Enter : 検索巡回　｜　L : 一覧　｜　R : 乱数配列　｜　Esc : 解除
           </div>
         </div>
       </div>

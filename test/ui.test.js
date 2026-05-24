@@ -1,5 +1,5 @@
 import assert from "assert";
-import { renderCurrentWord, updateAuthUI, updateAutoPlayButton, updateCurrentLabel, updateReviewButtons } from "../ui.js";
+import { renderCurrentWord, updateAuthUI, updateAutoPlayButton, updateCurrentLabel, updateRecallTimeControl, updateReviewButtons } from "../ui.js";
 
 function makeContext(currentUser) {
   return {
@@ -81,6 +81,36 @@ assert.strictEqual(autoPlayButton.attributes["aria-pressed"], "true");
 updateAutoPlayButton(autoPlayContext("loop"));
 assert.strictEqual(autoPlayButton.textContent, "循環再生");
 assert.strictEqual(autoPlayButton.attributes["aria-pressed"], "true");
+function makeClassList() {
+  return {
+    values: new Set(),
+    toggle(name, force) {
+      if (force) this.values.add(name);
+      else this.values.delete(name);
+    },
+    contains(name) {
+      return this.values.has(name);
+    }
+  };
+}
+
+const recallClassList = makeClassList();
+const displayClassList = makeClassList();
+const timeControlContext = (challengeMode, autoPlayMode) => ({
+  getState: () => ({ challengeMode, autoPlayMode }),
+  dom: {
+    recallTimeControlEl: { classList: recallClassList },
+    displayTimeControlEl: { classList: displayClassList }
+  }
+});
+
+updateRecallTimeControl(timeControlContext(false, "off"));
+assert.strictEqual(recallClassList.contains("is-inactive"), true, "recall time should dim when challenge mode is off");
+assert.strictEqual(displayClassList.contains("is-inactive"), true, "display time should dim when auto play is off");
+
+updateRecallTimeControl(timeControlContext(true, "once"));
+assert.strictEqual(recallClassList.contains("is-inactive"), false, "recall time should be active when challenge mode is on");
+assert.strictEqual(displayClassList.contains("is-inactive"), false, "display time should be active when auto play is on");
 
 const reviewWords = [{ id: "word-1" }, { id: "word-2" }];
 let reviewIndex = 0;

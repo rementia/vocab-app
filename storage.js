@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   reviewScores: "portfolio_tango_review_scores",
   challengeMode: "portfolio_tango_challenge_mode",
   challengeTime: "portfolio_tango_challenge_time",
+  displayTime: "portfolio_tango_display_time",
   translationMode: "portfolio_tango_translation_mode",
   autoPlay: "portfolio_tango_auto_play",
   randomMode: "portfolio_tango_random_mode",
@@ -75,6 +76,10 @@ export function saveChallengeModeState(value) {
 
 export function saveChallengeTimeState(value) {
   safeSetItem(STORAGE_KEYS.challengeTime, String(value));
+}
+
+export function saveDisplayTimeState(value) {
+  safeSetItem(STORAGE_KEYS.displayTime, String(value));
 }
 
 export function saveTranslationModeState(value) {

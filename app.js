@@ -23,6 +23,7 @@ import {
   saveReviewScoresToLocalOnly,
   saveChallengeModeState,
   saveChallengeTimeState,
+  saveDisplayTimeState,
   saveTranslationModeState,
   saveAutoPlayState,
   saveRandomModeState,
@@ -102,8 +103,11 @@ const {
   nextHintEl,
   currentEl,
   recallTimeControlEl,
+  displayTimeControlEl,
   timeSlider,
   timeValue,
+  displayTimeSlider,
+  displayTimeValue,
   favoriteToggleBtnEl,
   difficultToggleBtnEl,
   reviewScoreLabelEl,
@@ -144,6 +148,7 @@ let reviewScores = {};
 let favoritesUpdatedAt = 0;
 let challengeMode = false;
 let challengeTime = 1500;
+let displayTime = 1500;
 let translationMode = false;
 let autoPlayMode = "off";
 let randomMode = false;
@@ -182,6 +187,7 @@ const uiContext = {
     index,
     challengeMode,
     challengeTime,
+    displayTime,
     translationMode,
     autoPlayMode,
     historyBackStack: getHistoryBackStack(),
@@ -202,6 +208,9 @@ const uiContext = {
     nextHintEl,
     currentEl,
     recallTimeControlEl,
+    displayTimeControlEl,
+    displayTimeSlider,
+    displayTimeValue,
     favoriteToggleBtnEl,
     difficultToggleBtnEl,
     reviewScoreLabelEl,
@@ -255,6 +264,16 @@ async function init() {
     nextWord,
     speakWord: handleSpeakCurrentWord,
     handleToggleFavoriteCurrentWord,
+    handleToggleDifficultCurrentWord,
+    decreaseReviewScore: () => handleReviewCurrentWord(-1, decreaseReviewBtnEl),
+    resetReviewScore: handleResetReviewCurrentWord,
+    increaseReviewScore: () => handleReviewCurrentWord(1, increaseReviewBtnEl),
+    focusSearch,
+    clearSearch,
+    selectNextSearchResult,
+    selectPreviousSearchResult,
+    closeSidebar,
+    toggleSidebar,
     toggleRandomMode
   });
   setupAuthListener();
@@ -527,6 +546,17 @@ function bindUIEvents() {
     });
   }
 
+  if (displayTimeSlider && displayTimeValue) {
+    displayTimeSlider.value = Math.min(displayTime / 1000, Number(displayTimeSlider.max));
+    displayTimeValue.textContent = (displayTime / 1000).toFixed(1);
+
+    displayTimeSlider.addEventListener("input", () => {
+      displayTime = parseFloat(displayTimeSlider.value) * 1000;
+      displayTimeValue.textContent = parseFloat(displayTimeSlider.value).toFixed(1);
+      saveDisplayTimeState(displayTime);
+    });
+  }
+
   volButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const volName = button.dataset.vol;
@@ -562,6 +592,7 @@ function loadSavedState() {
   const savedFavoritesUpdatedAt = safeGetItem(STORAGE_KEYS.favoritesUpdatedAt);
   const savedChallengeMode = safeGetItem(STORAGE_KEYS.challengeMode);
   const savedChallengeTime = safeGetItem(STORAGE_KEYS.challengeTime);
+  const savedDisplayTime = safeGetItem(STORAGE_KEYS.displayTime);
   const savedTranslationMode = safeGetItem(STORAGE_KEYS.translationMode);
   const savedAutoPlay = safeGetItem(STORAGE_KEYS.autoPlay);
   const savedRandomMode = safeGetItem(STORAGE_KEYS.randomMode);
@@ -620,7 +651,14 @@ function loadSavedState() {
   if (savedChallengeTime !== null) {
     const parsedTime = Number(savedChallengeTime);
     if (!Number.isNaN(parsedTime)) {
-      challengeTime = Math.min(parsedTime, 3000);
+      challengeTime = Math.min(Math.max(parsedTime, 0), 3000);
+    }
+  }
+
+  if (savedDisplayTime !== null) {
+    const parsedTime = Number(savedDisplayTime);
+    if (!Number.isNaN(parsedTime)) {
+      displayTime = Math.min(Math.max(parsedTime, 0), 3000);
     }
   }
 
@@ -958,7 +996,7 @@ function shouldStopAutoPlayOnce(nextIndex) {
   return autoPlayMode === "once" && index === words.length - 1 && nextIndex === 0;
 }
 function getAutoPlayDelay() {
-  return challengeMode ? challengeTime + 1500 : 1500;
+  return challengeMode ? challengeTime + displayTime : displayTime;
 }
 
 function scheduleAutoPlay() {
@@ -1001,6 +1039,62 @@ function getCurrentWord() {
 function handleSpeakCurrentWord() {
   speakWord();
   scheduleAutoPlay();
+}
+function focusSearch() {
+  if (!searchInputEl) return;
+  if (!sidebarOpen) {
+    sidebarOpen = true;
+    saveSidebarState(sidebarOpen);
+    applySidebarState();
+  }
+  searchInputEl.focus();
+  searchInputEl.select();
+}
+
+function clearSearch() {
+  if (!searchInputEl || searchInputEl.value === "") return false;
+  setSearchQuery("");
+  requestListRebuild();
+  renderLayout();
+  return true;
+}
+
+function getSearchResultItems() {
+  return Array.from(listEl?.querySelectorAll(".word-item:not(.empty-result)") || [])
+    .filter((item) => item instanceof HTMLElement);
+}
+
+function moveToSearchResult(direction) {
+  const resultItems = getSearchResultItems();
+  if (!resultItems.length) return;
+
+  const activeResultIndex = resultItems.findIndex((item) => Number(item.dataset.index) === index);
+  const fallbackIndex = direction > 0 ? 0 : resultItems.length - 1;
+  const nextResultIndex = activeResultIndex >= 0
+    ? (activeResultIndex + direction + resultItems.length) % resultItems.length
+    : fallbackIndex;
+  const nextItem = resultItems[nextResultIndex];
+  if (!(nextItem instanceof HTMLElement)) return;
+
+  const nextIndex = Number(nextItem.dataset.index);
+  if (Number.isNaN(nextIndex)) return;
+
+  navMoveToIndex(nextIndex, { pushHistory: true });
+  scheduleAutoPlayAfterRender();
+}
+
+function selectNextSearchResult() {
+  moveToSearchResult(1);
+}
+
+function selectPreviousSearchResult() {
+  moveToSearchResult(-1);
+}
+function closeSidebar() {
+  if (!sidebarOpen) return;
+  sidebarOpen = false;
+  saveSidebarState(sidebarOpen);
+  applySidebarState();
 }
 function toggleSidebar() {
   sidebarOpen = !sidebarOpen;
@@ -1056,6 +1150,7 @@ function toggleAutoPlay() {
   autoPlayMode = autoPlayMode === "off" ? "once" : autoPlayMode === "once" ? "loop" : "off";
   saveAutoPlayState(autoPlayMode);
   updateAutoPlayButton();
+  updateRecallTimeControl();
 
   if (!isAutoPlayActive()) {
     clearAutoPlayTimer();

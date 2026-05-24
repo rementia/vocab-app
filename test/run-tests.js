@@ -5,7 +5,8 @@ const tests = [
   "./favoritesManager.test.js",
   "./difficultsManager.test.js",
   "./reviewManager.test.js",
-  "./ui.test.js"
+  "./ui.test.js",
+  "./events.test.js"
 ];
 
 for (const testPath of tests) {

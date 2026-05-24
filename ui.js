@@ -339,6 +339,7 @@ export function updateRecallTimeControl(context) {
   const state = getState(context);
   const dom = getDom(context);
   dom.recallTimeControlEl?.classList.toggle("is-inactive", !state.challengeMode);
+  dom.displayTimeControlEl?.classList.toggle("is-inactive", state.autoPlayMode === "off");
 }
 export function updateSpeechSyncButton(context) {
   updateToggleButton(context, getDom(context).speechSyncBtnEl, "発音同期", getState(context).speechSync);

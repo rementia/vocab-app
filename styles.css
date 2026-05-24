@@ -262,19 +262,29 @@ body.loading {
   }
 }
 
-.recall-time-control {
+.time-controls {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 14px;
   margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.recall-time-control,
+.display-time-control {
   text-align: center;
   font-size: 12px;
   color: var(--muted-text);
 }
 
-
-.recall-time-control.is-inactive {
+.recall-time-control.is-inactive,
+.display-time-control.is-inactive {
   opacity: 0.4;
 }
 
-.recall-time-control input {
+.recall-time-control input,
+.display-time-control input {
   width: 160px;
 }
 

@@ -1,11 +1,42 @@
-export function bindKeyboardEvents({ prevWord, nextWord, speakWord, handleToggleFavoriteCurrentWord, toggleRandomMode }) {
+export function bindKeyboardEvents({
+  prevWord,
+  nextWord,
+  speakWord,
+  handleToggleFavoriteCurrentWord,
+  handleToggleDifficultCurrentWord,
+  decreaseReviewScore,
+  resetReviewScore,
+  increaseReviewScore,
+  focusSearch,
+  clearSearch,
+  selectNextSearchResult,
+  selectPreviousSearchResult,
+  closeSidebar,
+  toggleSidebar,
+  toggleRandomMode
+}) {
   document.addEventListener("keydown", (event) => {
+    if (event.isComposing) return;
+
     const target = event.target;
-    if (
+    const isTextInput =
       target instanceof HTMLInputElement ||
       target instanceof HTMLTextAreaElement ||
-      target instanceof HTMLSelectElement
-    ) {
+      target instanceof HTMLSelectElement;
+
+    if (isTextInput) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (!clearSearch()) target.blur();
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          selectPreviousSearchResult();
+        } else {
+          selectNextSearchResult();
+        }
+      }
       return;
     }
 
@@ -30,6 +61,48 @@ export function bindKeyboardEvents({ prevWord, nextWord, speakWord, handleToggle
     if (event.key.toLowerCase() === "f") {
       event.preventDefault();
       handleToggleFavoriteCurrentWord();
+      return;
+    }
+
+    if (event.key.toLowerCase() === "d") {
+      event.preventDefault();
+      handleToggleDifficultCurrentWord();
+      return;
+    }
+
+    if (event.key === "+") {
+      event.preventDefault();
+      increaseReviewScore();
+      return;
+    }
+
+    if (event.key === "-" || event.key === "－") {
+      event.preventDefault();
+      decreaseReviewScore();
+      return;
+    }
+
+    if (event.key === "0") {
+      event.preventDefault();
+      resetReviewScore();
+      return;
+    }
+
+    if (event.key === "/") {
+      event.preventDefault();
+      focusSearch();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeSidebar();
+      return;
+    }
+
+    if (event.key.toLowerCase() === "l") {
+      event.preventDefault();
+      toggleSidebar();
       return;
     }
 

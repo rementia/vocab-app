@@ -4,9 +4,9 @@ import {
   safeSetItem,
   saveSpeechSyncState,
   saveChallengeTimeState,
+  saveDisplayTimeState,
   saveFavoritesToLocalOnly,
   saveDifficultsToLocalOnly,
-  saveFrequencyModeState,
   saveIndexByVol
 } from "../storage.js";
 
@@ -44,6 +44,9 @@ assert.strictEqual(values.get("portfolio_tango_speech_sync"), "true", "saveSpeec
 
 saveChallengeTimeState(1500);
 assert.strictEqual(values.get("portfolio_tango_challenge_time"), "1500", "saveChallengeTimeState should store numbers as strings");
+
+saveDisplayTimeState(1800);
+assert.strictEqual(values.get("portfolio_tango_display_time"), "1800", "saveDisplayTimeState should store numbers as strings");
 
 installMockStorage({ throwOnGet: true });
 assert.doesNotThrow(() => safeGetItem("blocked"), "safeGetItem should swallow storage read errors");
