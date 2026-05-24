@@ -123,7 +123,7 @@ export function renderCurrentWord(context) {
   const callbacks = getCallbacks(context);
 
   callbacks.clearMeaningRevealTimer();
-  callbacks.clearAutoSpeakTimer();
+  callbacks.clearSpeechSyncTimer();
 
   const current = callbacks.getCurrentWord();
   if (!current) {
@@ -340,8 +340,8 @@ export function updateRecallTimeControl(context) {
   const dom = getDom(context);
   dom.recallTimeControlEl?.classList.toggle("is-inactive", !state.challengeMode);
 }
-export function updateAutoSpeakButton(context) {
-  updateToggleButton(context, getDom(context).autoSpeakBtnEl, "発音同期", getState(context).autoSpeak);
+export function updateSpeechSyncButton(context) {
+  updateToggleButton(context, getDom(context).speechSyncBtnEl, "発音同期", getState(context).speechSync);
 }
 
 export function updateChallengeButton(context) {
@@ -353,7 +353,13 @@ export function updateTranslationButton(context) {
 }
 
 export function updateAutoPlayButton(context) {
-  updateToggleButton(context, getDom(context).autoPlayBtnEl, "自動再生", getState(context).autoPlay);
+  const state = getState(context);
+  const label = state.autoPlayMode === "once"
+    ? "一周再生"
+    : state.autoPlayMode === "loop"
+      ? "循環再生"
+      : "自動再生";
+  updateToggleButton(context, getDom(context).autoPlayBtnEl, label, state.autoPlayMode !== "off");
 }
 
 export function updateRandomButton(context) {

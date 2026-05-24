@@ -4,14 +4,14 @@ let historyForwardStack = [];
 let getIndexFn = null;
 let setIndexFn = null;
 let renderFn = null;
-let scheduleAutoSpeakFn = null;
+let scheduleSpeechSyncFn = null;
 let getWordsLengthFn = null;
 
-export function initNavigation({ getIndex, setIndex, renderCurrentWord, scheduleAutoSpeak, getWordsLength }) {
+export function initNavigation({ getIndex, setIndex, renderCurrentWord, scheduleSpeechSync, getWordsLength }) {
   getIndexFn = getIndex;
   setIndexFn = setIndex;
   renderFn = renderCurrentWord;
-  scheduleAutoSpeakFn = scheduleAutoSpeak;
+  scheduleSpeechSyncFn = scheduleSpeechSync;
   getWordsLengthFn = getWordsLength;
 }
 
@@ -41,7 +41,7 @@ export function moveToIndex(nextIndex, { pushHistory = false } = {}) {
 
   setIndexFn(nextIndex);
   if (typeof renderFn === 'function') renderFn();
-  if (typeof scheduleAutoSpeakFn === 'function') scheduleAutoSpeakFn();
+  if (typeof scheduleSpeechSyncFn === 'function') scheduleSpeechSyncFn();
 }
 
 export function getRandomPrevIndexFromHistory() {

@@ -3,7 +3,7 @@ export const STORAGE_KEYS = {
   mode: "portfolio_tango_current_mode",
   indexByVol: "portfolio_tango_index_by_vol",
   sidebarOpen: "portfolio_tango_sidebar_open",
-  autoSpeak: "portfolio_tango_auto_speak",
+  speechSync: "portfolio_tango_speech_sync",
   favorites: "portfolio_tango_favorites",
   favoritesUpdatedAt: "portfolio_tango_favorites_updated_at",
   difficults: "portfolio_tango_difficults",
@@ -49,8 +49,8 @@ export function saveSidebarState(value) {
   safeSetItem(STORAGE_KEYS.sidebarOpen, String(value));
 }
 
-export function saveAutoSpeakState(value) {
-  safeSetItem(STORAGE_KEYS.autoSpeak, String(value));
+export function saveSpeechSyncState(value) {
+  safeSetItem(STORAGE_KEYS.speechSync, String(value));
 }
 
 export function saveFavoritesToLocalOnly(value) {

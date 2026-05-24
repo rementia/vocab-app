@@ -1,5 +1,5 @@
 import assert from "assert";
-import { renderCurrentWord, updateAuthUI, updateCurrentLabel, updateReviewButtons } from "../ui.js";
+import { renderCurrentWord, updateAuthUI, updateAutoPlayButton, updateCurrentLabel, updateReviewButtons } from "../ui.js";
 
 function makeContext(currentUser) {
   return {
@@ -45,6 +45,42 @@ function makeButton() {
     }
   };
 }
+
+
+function makeToggleButton() {
+  return {
+    textContent: "",
+    attributes: {},
+    classList: {
+      values: new Set(),
+      toggle(name, force) {
+        if (force) this.values.add(name);
+        else this.values.delete(name);
+      },
+      contains(name) {
+        return this.values.has(name);
+      }
+    },
+    setAttribute(name, value) {
+      this.attributes[name] = value;
+    }
+  };
+}
+
+const autoPlayButton = makeToggleButton();
+const autoPlayContext = (autoPlayMode) => ({
+  getState: () => ({ autoPlayMode }),
+  dom: { autoPlayBtnEl: autoPlayButton }
+});
+updateAutoPlayButton(autoPlayContext("off"));
+assert.strictEqual(autoPlayButton.textContent, "自動再生");
+assert.strictEqual(autoPlayButton.attributes["aria-pressed"], "false");
+updateAutoPlayButton(autoPlayContext("once"));
+assert.strictEqual(autoPlayButton.textContent, "一周再生");
+assert.strictEqual(autoPlayButton.attributes["aria-pressed"], "true");
+updateAutoPlayButton(autoPlayContext("loop"));
+assert.strictEqual(autoPlayButton.textContent, "循環再生");
+assert.strictEqual(autoPlayButton.attributes["aria-pressed"], "true");
 
 const reviewWords = [{ id: "word-1" }, { id: "word-2" }];
 let reviewIndex = 0;
@@ -96,7 +132,7 @@ function makeWordContext(translationMode) {
     },
     callbacks: {
       clearMeaningRevealTimer() {},
-      clearAutoSpeakTimer() {},
+      clearSpeechSyncTimer() {},
       clearAutoPlayTimer() {},
       getCurrentWord: () => ({ word: "create", meaning: "作る" }),
       persistCurrentIndex() {},

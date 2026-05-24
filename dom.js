@@ -21,7 +21,7 @@ export function getDomElements() {
     increaseReviewBtnEl: document.getElementById("increaseReviewBtn"),
     favoriteListBtnEl: document.getElementById("favoriteListBtn"),
     difficultListBtnEl: document.getElementById("difficultListBtn"),
-    autoSpeakBtnEl: document.getElementById("autoSpeakBtn"),
+    speechSyncBtnEl: document.getElementById("speechSyncBtn"),
     challengeBtnEl: document.getElementById("challengeBtn"),
     translationBtnEl: document.getElementById("translationBtn"),
     autoPlayBtnEl: document.getElementById("autoPlayBtn"),

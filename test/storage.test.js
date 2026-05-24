@@ -2,7 +2,7 @@ import assert from "assert";
 import {
   safeGetItem,
   safeSetItem,
-  saveAutoSpeakState,
+  saveSpeechSyncState,
   saveChallengeTimeState,
   saveFavoritesToLocalOnly,
   saveDifficultsToLocalOnly,
@@ -39,8 +39,8 @@ assert.strictEqual(values.get("portfolio_tango_index_by_vol"), "{\"vol1\":2,\"fa
 saveFavoritesToLocalOnly({ "vol1-2-hello": { addedAt: 123 } });
 assert.strictEqual(values.get("portfolio_tango_favorites"), "{\"vol1-2-hello\":{\"addedAt\":123}}", "saveFavoritesToLocalOnly should serialize favorites");
 
-saveAutoSpeakState(true);
-assert.strictEqual(values.get("portfolio_tango_auto_speak"), "true", "saveAutoSpeakState should store booleans as strings");
+saveSpeechSyncState(true);
+assert.strictEqual(values.get("portfolio_tango_speech_sync"), "true", "saveSpeechSyncState should store booleans as strings");
 
 saveChallengeTimeState(1500);
 assert.strictEqual(values.get("portfolio_tango_challenge_time"), "1500", "saveChallengeTimeState should store numbers as strings");
