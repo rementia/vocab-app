@@ -1,4 +1,4 @@
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+﻿import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 import { sheetUrls, fetchWordsForVol } from './data.js';
 import { getDomElements } from './dom.js';
 import { auth, db, provider } from './firebaseClient.js';
@@ -151,12 +151,15 @@ let challengeTime = 1500;
 let displayTime = 1500;
 let translationMode = false;
 let autoPlayMode = "off";
+let autoPlayOnceStartIndex = null;
 let randomMode = false;
 let frequencyMode = false;
 
 let meaningRevealTimer = null;
 let speechSyncTimer = null;
 let autoPlayTimer = null;
+let autoPlayDisplayPhaseTimer = null;
+let autoPlayWaitStartedAt = 0;
 let wordOrderUpdatePending = false;
 let hasFinishedInitialLoading = false;
 
@@ -245,6 +248,8 @@ const uiContext = {
     setSearchQuery
   }
 };
+
+const AUTO_PLAY_SKIP_LOCK_MS = 500;
 
 let shuffledWordsMap = {};
 
@@ -524,6 +529,7 @@ function bindUIEvents() {
   prevWordBtnEl?.addEventListener("click", prevWord);
   nextWordBtnEl?.addEventListener("click", nextWord);
   speakWordBtnEl?.addEventListener("click", handleSpeakCurrentWord);
+  document.querySelector(".center-box")?.addEventListener("click", handleAutoPlaySkipRequest);
 
   searchInputEl?.addEventListener("input", () => {
     setSearchQuery(searchInputEl.value);
@@ -651,19 +657,21 @@ function loadSavedState() {
   if (savedChallengeTime !== null) {
     const parsedTime = Number(savedChallengeTime);
     if (!Number.isNaN(parsedTime)) {
-      challengeTime = Math.min(Math.max(parsedTime, 0), 3000);
+      challengeTime = Math.min(Math.max(parsedTime, 1000), 3000);
     }
   }
 
   if (savedDisplayTime !== null) {
     const parsedTime = Number(savedDisplayTime);
     if (!Number.isNaN(parsedTime)) {
-      displayTime = Math.min(Math.max(parsedTime, 0), 3000);
+      displayTime = Math.min(Math.max(parsedTime, 1000), 3000);
     }
   }
 
   if (savedTranslationMode !== null) translationMode = savedTranslationMode === "true";
-  if (savedAutoPlay === "loop") {
+  if (savedAutoPlay === "once") {
+    autoPlayMode = "once";
+  } else if (savedAutoPlay === "loop") {
     autoPlayMode = "loop";
   } else if (savedAutoPlay === "true") {
     autoPlayMode = "loop";
@@ -923,9 +931,13 @@ function updateSpeechSyncButton() {
   uiUpdateSpeechSyncButton(uiContext);
 }
 
+function updateRecallTimeControl() {
+  uiUpdateRecallTimeControl(uiContext);
+}
+
 function updateChallengeButton() {
   uiUpdateChallengeButton(uiContext);
-  uiUpdateRecallTimeControl(uiContext);
+  updateRecallTimeControl();
 }
 
 function updateTranslationButton() {
@@ -934,6 +946,7 @@ function updateTranslationButton() {
 
 function updateAutoPlayButton() {
   uiUpdateAutoPlayButton(uiContext);
+  updateRecallTimeControl();
 }
 
 function updateRandomButton() {
@@ -979,6 +992,11 @@ function clearAutoPlayTimer() {
     clearTimeout(autoPlayTimer);
     autoPlayTimer = null;
   }
+
+  if (autoPlayDisplayPhaseTimer) {
+    clearTimeout(autoPlayDisplayPhaseTimer);
+    autoPlayDisplayPhaseTimer = null;
+  }
 }
 
 function isAutoPlayActive() {
@@ -987,21 +1005,73 @@ function isAutoPlayActive() {
 
 function stopAutoPlay() {
   autoPlayMode = "off";
+  autoPlayOnceStartIndex = null;
   saveAutoPlayState(autoPlayMode);
   updateAutoPlayButton();
   clearAutoPlayTimer();
 }
 
 function shouldStopAutoPlayOnce(nextIndex) {
-  return autoPlayMode === "once" && index === words.length - 1 && nextIndex === 0;
+  return autoPlayMode === "once" && autoPlayOnceStartIndex !== null && nextIndex === autoPlayOnceStartIndex;
 }
 function getAutoPlayDelay() {
   return challengeMode ? challengeTime + displayTime : displayTime;
 }
 
+function getCurrentAnswerText() {
+  const current = getCurrentWord();
+  if (!current) return "";
+  return translationMode ? current.word : current.meaning;
+}
+
+function isAutoPlaySkipIgnoredTarget(target) {
+  return target instanceof Element && Boolean(target.closest("button, input, textarea, select, a, .word-item"));
+}
+
+function isAutoPlaySkipLocked() {
+  return Date.now() - autoPlayWaitStartedAt < AUTO_PLAY_SKIP_LOCK_MS;
+}
+
+function revealCurrentMeaningImmediately() {
+  if (!meaningEl || meaningEl.textContent !== "\u30fb\u30fb\u30fb") return false;
+  clearMeaningRevealTimer();
+  meaningEl.textContent = getCurrentAnswerText();
+  return true;
+}
+
+function scheduleAutoPlayToNext(delay) {
+  clearAutoPlayTimer();
+  autoPlayWaitStartedAt = Date.now();
+  autoPlayTimer = setTimeout(() => {
+    nextWord();
+  }, delay);
+}
+
+function handleAutoPlaySkipRequest(event) {
+  if (!isAutoPlayActive() || !words.length) return;
+  if (isAutoPlaySkipIgnoredTarget(event.target)) return;
+  if (isAutoPlaySkipLocked()) return;
+
+  if (challengeMode && revealCurrentMeaningImmediately()) {
+    scheduleAutoPlayToNext(displayTime);
+    return;
+  }
+
+  nextWord();
+}
+
 function scheduleAutoPlay() {
   if (!isAutoPlayActive() || !words.length) return;
   clearAutoPlayTimer();
+  autoPlayWaitStartedAt = Date.now();
+
+  if (challengeMode) {
+    autoPlayDisplayPhaseTimer = setTimeout(() => {
+      autoPlayWaitStartedAt = Date.now();
+      autoPlayDisplayPhaseTimer = null;
+    }, challengeTime);
+  }
+
   autoPlayTimer = setTimeout(() => {
     nextWord();
   }, getAutoPlayDelay());
@@ -1014,6 +1084,10 @@ function scheduleAutoPlayAfterRender() {
       scheduleAutoPlay();
     });
   });
+}
+
+function startAutoPlayFromCurrentWord() {
+  scheduleAutoPlay();
 }
 function scheduleSpeechSync() {
   if (!speechSync) return;
@@ -1148,14 +1222,14 @@ function toggleTranslationMode() {
 
 function toggleAutoPlay() {
   autoPlayMode = autoPlayMode === "off" ? "once" : autoPlayMode === "once" ? "loop" : "off";
+  autoPlayOnceStartIndex = autoPlayMode === "once" ? index : null;
   saveAutoPlayState(autoPlayMode);
   updateAutoPlayButton();
-  updateRecallTimeControl();
 
   if (!isAutoPlayActive()) {
     clearAutoPlayTimer();
   } else {
-    scheduleAutoPlay();
+    startAutoPlayFromCurrentWord();
   }
 }
 
@@ -1244,3 +1318,4 @@ function nextWord() {
 }
 
 export { init, finishInitialLoading };
+

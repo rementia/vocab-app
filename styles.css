@@ -271,6 +271,14 @@ body.loading {
   flex-wrap: wrap;
 }
 
+.side-adjustments .time-controls {
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0;
+  width: max-content;
+}
+
 .recall-time-control,
 .display-time-control {
   text-align: center;
@@ -288,6 +296,11 @@ body.loading {
   width: 160px;
 }
 
+.side-adjustments .recall-time-control input,
+.side-adjustments .display-time-control input {
+  width: 136px;
+}
+
 .control-stack {
   display: flex;
   flex-direction: column;
@@ -296,6 +309,11 @@ body.loading {
 }
 
 .control-stack .control-btn {
+  width: 108px;
+  text-align: center;
+}
+
+.order-mode-row .control-btn {
   width: 108px;
   text-align: center;
 }
@@ -443,6 +461,7 @@ body.loading {
   padding: var(--space-center-padding);
 }
 
+.order-mode-row,
 .current-meta-row,
 .current-action-row {
   display: flex;
@@ -451,8 +470,12 @@ body.loading {
   gap: var(--space-current-row);
 }
 
+.order-mode-row {
+  flex-wrap: wrap;
+}
+
 .current-meta-row {
-  margin-top: 10px;
+  margin-top: 0;
 }
 
 .current-action-row {
@@ -461,6 +484,7 @@ body.loading {
 }
 
 .word-mark-actions,
+.side-adjustments,
 .review-panel {
   display: inline-flex;
   align-items: center;
@@ -471,12 +495,18 @@ body.loading {
   flex: 0 0 auto;
 }
 
-.review-panel {
+.side-adjustments {
   position: absolute;
   right: 18px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.review-panel {
+  position: static;
   flex-wrap: wrap;
   justify-content: center;
   width: 188px;
@@ -634,7 +664,7 @@ body.loading {
     order: 1;
   }
 
-  .review-panel {
+  .side-adjustments {
     position: static;
     order: 2;
     transform: none;
@@ -669,6 +699,7 @@ body.loading {
     width: 96px;
     font-size: 12px;
   }
+
 
   #word {
     font-size: clamp(30px, 8vw, 52px);
@@ -742,11 +773,15 @@ body.loading {
     row-gap: 5px;
   }
 
-  .review-panel {
+  .side-adjustments {
     position: absolute;
     right: 0px;
     top: 70%;
+    transform: none;
     margin-top: 0;
+  }
+
+  .review-panel {
     width: 164px;
     max-width: calc(100vw - 16px);
   }

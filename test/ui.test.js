@@ -111,6 +111,9 @@ assert.strictEqual(displayClassList.contains("is-inactive"), true, "display time
 updateRecallTimeControl(timeControlContext(true, "once"));
 assert.strictEqual(recallClassList.contains("is-inactive"), false, "recall time should be active when challenge mode is on");
 assert.strictEqual(displayClassList.contains("is-inactive"), false, "display time should be active when auto play is on");
+updateRecallTimeControl(timeControlContext(false, "once"));
+assert.strictEqual(recallClassList.contains("is-inactive"), true, "recall time should dim when challenge mode is off even during auto play");
+assert.strictEqual(displayClassList.contains("is-inactive"), false, "display time should stay active when auto play is on and challenge mode is off");
 
 const reviewWords = [{ id: "word-1" }, { id: "word-2" }];
 let reviewIndex = 0;
