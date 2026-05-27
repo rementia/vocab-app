@@ -151,7 +151,7 @@ let challengeTime = 1500;
 let displayTime = 1500;
 let translationMode = false;
 let autoPlayMode = "off";
-let autoPlayOnceStartIndex = null;
+let autoPlayOnceStartPoint = null;
 let randomMode = false;
 let frequencyMode = false;
 
@@ -315,6 +315,9 @@ async function init() {
 const handleViewportResize = handleViewportChange(renderLayout);
 
 async function handleLoadFavoritesMode() {
+  if (currentMode !== "favorites" && isAutoPlayActive()) {
+    stopAutoPlay();
+  }
   const result = await loadFavoritesModeManager(
     { allWordsByVol, currentMode, currentVol, indexByVol, favorites, words, randomMode, frequencyMode },
     {
@@ -354,6 +357,9 @@ async function handleLoadFavoritesMode() {
 
 
 async function handleLoadDifficultsMode() {
+  if (currentMode !== "difficults" && isAutoPlayActive()) {
+    stopAutoPlay();
+  }
   const result = await loadDifficultsModeManager(
     { allWordsByVol, currentMode, indexByVol, difficults, words, randomMode, frequencyMode },
     {
@@ -657,24 +663,20 @@ function loadSavedState() {
   if (savedChallengeTime !== null) {
     const parsedTime = Number(savedChallengeTime);
     if (!Number.isNaN(parsedTime)) {
-      challengeTime = Math.min(Math.max(parsedTime, 1000), 3000);
+      challengeTime = Math.min(Math.max(parsedTime, 1000), 5000);
     }
   }
 
   if (savedDisplayTime !== null) {
     const parsedTime = Number(savedDisplayTime);
     if (!Number.isNaN(parsedTime)) {
-      displayTime = Math.min(Math.max(parsedTime, 1000), 3000);
+      displayTime = Math.min(Math.max(parsedTime, 1000), 5000);
     }
   }
 
   if (savedTranslationMode !== null) translationMode = savedTranslationMode === "true";
   if (savedAutoPlay === "once") {
     autoPlayMode = "once";
-  } else if (savedAutoPlay === "loop") {
-    autoPlayMode = "loop";
-  } else if (savedAutoPlay === "true") {
-    autoPlayMode = "loop";
   }
   if (savedRandomMode !== null) randomMode = savedRandomMode === "true";
   if (savedFrequencyMode !== null) frequencyMode = savedFrequencyMode === "true";
@@ -786,6 +788,11 @@ async function ensureAllVolumesLoaded() {
 }
 
 async function loadSheet(volName) {
+  const isChangingVol = currentMode !== "vol" || currentVol !== volName;
+  if (isChangingVol && isAutoPlayActive()) {
+    stopAutoPlay();
+  }
+
   try {
     currentMode = "vol";
     currentVol = volName;
@@ -1005,14 +1012,27 @@ function isAutoPlayActive() {
 
 function stopAutoPlay() {
   autoPlayMode = "off";
-  autoPlayOnceStartIndex = null;
+  autoPlayOnceStartPoint = null;
   saveAutoPlayState(autoPlayMode);
   updateAutoPlayButton();
   clearAutoPlayTimer();
 }
 
+function getAutoPlayPoint(targetIndex = index) {
+  return {
+    mode: currentMode,
+    vol: currentMode === "vol" ? currentVol : null,
+    index: targetIndex
+  };
+}
+
+function isSameAutoPlayPoint(a, b) {
+  return Boolean(a && b && a.mode === b.mode && a.vol === b.vol && a.index === b.index);
+}
+
+
 function shouldStopAutoPlayOnce(nextIndex) {
-  return autoPlayMode === "once" && autoPlayOnceStartIndex !== null && nextIndex === autoPlayOnceStartIndex;
+  return autoPlayMode === "once" && isSameAutoPlayPoint(autoPlayOnceStartPoint, getAutoPlayPoint(nextIndex));
 }
 function getAutoPlayDelay() {
   return challengeMode ? challengeTime + displayTime : displayTime;
@@ -1221,8 +1241,8 @@ function toggleTranslationMode() {
 }
 
 function toggleAutoPlay() {
-  autoPlayMode = autoPlayMode === "off" ? "once" : autoPlayMode === "once" ? "loop" : "off";
-  autoPlayOnceStartIndex = autoPlayMode === "once" ? index : null;
+  autoPlayMode = autoPlayMode === "off" ? "once" : "off";
+  autoPlayOnceStartPoint = autoPlayMode === "once" ? getAutoPlayPoint() : null;
   saveAutoPlayState(autoPlayMode);
   updateAutoPlayButton();
 
@@ -1318,4 +1338,5 @@ function nextWord() {
 }
 
 export { init, finishInitialLoading };
+
 
