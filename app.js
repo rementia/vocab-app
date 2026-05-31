@@ -401,6 +401,11 @@ async function handleLoadDifficultsMode() {
   }
 }
 function handleToggleFavoriteCurrentWord() {
+  if (!currentUser) {
+    updateFavoriteToggleButton();
+    return;
+  }
+
   const result = toggleFavoriteCurrentWordManager(
     {
       favorites,
@@ -440,6 +445,11 @@ function handleToggleFavoriteCurrentWord() {
 
 
 function handleToggleDifficultCurrentWord() {
+  if (!currentUser) {
+    updateDifficultToggleButton();
+    return;
+  }
+
   const result = toggleDifficultCurrentWordManager(
     {
       difficults,
@@ -715,7 +725,10 @@ function setupAuthListener() {
       favoritesUnsubscribe = null;
     }
 
-    if (!user) return;
+    if (!user) {
+      clearUserMarksForLoggedOut();
+      return;
+    }
 
     await loadFavoritesFromCloud();
     await loadDifficultsFromCloud();
@@ -723,6 +736,18 @@ function setupAuthListener() {
     requestListRebuild();
     render();
   });
+}
+
+function clearUserMarksForLoggedOut() {
+  favorites = {};
+  difficults = {};
+  favoritesUpdatedAt = 0;
+  difficultsUpdatedAt = 0;
+  favoritesVersion += 1;
+  difficultsVersion += 1;
+  clearAllShuffleCache();
+  requestListRebuild();
+  render();
 }
 
 function subscribeFavoritesRealtime() {
