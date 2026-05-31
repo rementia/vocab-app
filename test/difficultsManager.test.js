@@ -29,11 +29,15 @@ assert.deepStrictEqual(
 );
 
 let savedDifficults = null;
+let savedDifficultsUpdatedAt = null;
+let cloudSaves = 0;
 let rendered = 0;
 const state = {
   difficults: {},
+  difficultsUpdatedAt: 0,
   difficultsVersion: 0,
   currentMode: "vol",
+  currentUser: { uid: "user-1" },
   words: wordsByVol.vol1,
   index: 0,
   indexByVol: { vol1: 0, difficults: 0 }
@@ -43,9 +47,11 @@ const callbacks = {
   getCurrentWord: () => state.words[state.index],
   getWords: () => state.words,
   saveDifficultsToLocalOnly: (value) => { savedDifficults = { ...value }; },
+  saveDifficultsUpdatedAt: (value) => { savedDifficultsUpdatedAt = value; },
   clearAllShuffleCache: () => {},
   requestListRebuild: () => {},
   updateDifficultToggleButton: () => {},
+  saveDifficultsToCloud: () => { cloudSaves += 1; },
   applyWordOrder: () => {},
   saveIndexByVol: () => {},
   render: () => { rendered += 1; }
@@ -53,7 +59,10 @@ const callbacks = {
 
 const result = toggleDifficultCurrentWord(state, callbacks);
 assert.strictEqual(Boolean(savedDifficults["vol1-1-alpha"]), true);
+assert.strictEqual(typeof savedDifficultsUpdatedAt, "number");
+assert.strictEqual(cloudSaves, 1);
 assert.strictEqual(result.difficultsVersion, 1);
+assert.strictEqual(typeof result.difficultsUpdatedAt, "number");
 assert.strictEqual(rendered, 1);
 
 const modeState = {

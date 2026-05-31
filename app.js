@@ -20,6 +20,7 @@ import {
   saveFavoritesToLocalOnly,
   saveFavoritesUpdatedAt,
   saveDifficultsToLocalOnly,
+  saveDifficultsUpdatedAt,
   saveReviewScoresToLocalOnly,
   saveChallengeModeState,
   saveChallengeTimeState,
@@ -88,8 +89,11 @@ import {
   loadFavoritesFromCloudRemote,
   subscribeFavoritesRealtimeRemote,
   saveFavoritesToCloudRemote,
+  saveDifficultsToCloudRemote,
   syncFavoritesWithCloud,
-  resolveFavoritesSnapshot
+  syncDifficultsWithCloud,
+  resolveFavoritesSnapshot,
+  resolveDifficultsSnapshot
 } from './favorites.js';
 const {
   searchInputEl,
@@ -146,6 +150,7 @@ let favorites = {};
 let difficults = {};
 let reviewScores = {};
 let favoritesUpdatedAt = 0;
+let difficultsUpdatedAt = 0;
 let challengeMode = false;
 let challengeTime = 1500;
 let displayTime = 1500;
@@ -438,8 +443,10 @@ function handleToggleDifficultCurrentWord() {
   const result = toggleDifficultCurrentWordManager(
     {
       difficults,
+      difficultsUpdatedAt,
       difficultsVersion,
       currentMode,
+      currentUser,
       words,
       index,
       indexByVol
@@ -448,9 +455,11 @@ function handleToggleDifficultCurrentWord() {
       getCurrentWord,
       getWords: () => words,
       saveDifficultsToLocalOnly,
+      saveDifficultsUpdatedAt,
       clearAllShuffleCache,
       requestListRebuild,
       updateDifficultToggleButton,
+      saveDifficultsToCloud,
       applyWordOrder,
       saveIndexByVol,
       render
@@ -460,6 +469,7 @@ function handleToggleDifficultCurrentWord() {
   if (result) {
     if (typeof result.index === "number") index = result.index;
     if (result.indexByVol) indexByVol = result.indexByVol;
+    if (typeof result.difficultsUpdatedAt === "number") difficultsUpdatedAt = result.difficultsUpdatedAt;
     if (typeof result.difficultsVersion === "number") difficultsVersion = result.difficultsVersion;
     scheduleSpeechSyncAfterRender();
     scheduleAutoPlayAfterRender();
@@ -602,6 +612,7 @@ function loadSavedState() {
   const savedDifficults = safeGetItem(STORAGE_KEYS.difficults);
   const savedReviewScores = safeGetItem(STORAGE_KEYS.reviewScores);
   const savedFavoritesUpdatedAt = safeGetItem(STORAGE_KEYS.favoritesUpdatedAt);
+  const savedDifficultsUpdatedAt = safeGetItem(STORAGE_KEYS.difficultsUpdatedAt);
   const savedChallengeMode = safeGetItem(STORAGE_KEYS.challengeMode);
   const savedChallengeTime = safeGetItem(STORAGE_KEYS.challengeTime);
   const savedDisplayTime = safeGetItem(STORAGE_KEYS.displayTime);
@@ -658,6 +669,10 @@ function loadSavedState() {
     favoritesUpdatedAt = Number(savedFavoritesUpdatedAt) || 0;
   }
 
+  if (savedDifficultsUpdatedAt) {
+    difficultsUpdatedAt = Number(savedDifficultsUpdatedAt) || 0;
+  }
+
   if (savedChallengeMode !== null) challengeMode = savedChallengeMode === "true";
 
   if (savedChallengeTime !== null) {
@@ -703,6 +718,7 @@ function setupAuthListener() {
     if (!user) return;
 
     await loadFavoritesFromCloud();
+    await loadDifficultsFromCloud();
     subscribeFavoritesRealtime();
     requestListRebuild();
     render();
@@ -728,6 +744,23 @@ function subscribeFavoritesRealtime() {
     if (currentMode === "favorites") {
       applyWordOrder(false);
       index = Math.min(index, Math.max(words.length - 1, 0));
+    }
+
+    const difficultsResult = resolveDifficultsSnapshot(snap, difficultsUpdatedAt);
+    if (difficultsResult) {
+      difficults = difficultsResult.difficults;
+      difficultsUpdatedAt = difficultsResult.difficultsUpdatedAt;
+      difficultsVersion += 1;
+
+      saveDifficultsToLocalOnly(difficults);
+      saveDifficultsUpdatedAt(difficultsUpdatedAt);
+      clearAllShuffleCache();
+      requestListRebuild();
+
+      if (currentMode === "difficults") {
+        applyWordOrder(false);
+        index = Math.min(index, Math.max(words.length - 1, 0));
+      }
     }
 
     render();
@@ -758,11 +791,43 @@ async function loadFavoritesFromCloud() {
   }
 }
 
+async function loadDifficultsFromCloud() {
+  if (!currentUser) return;
+
+  try {
+    const result = await syncDifficultsWithCloud(
+      db,
+      FAVORITES_COLLECTION,
+      currentUser.uid,
+      difficults,
+      difficultsUpdatedAt
+    );
+
+    difficults = result.difficults;
+    difficultsUpdatedAt = result.difficultsUpdatedAt;
+    difficultsVersion += 1;
+    saveDifficultsToLocalOnly(difficults);
+    saveDifficultsUpdatedAt(difficultsUpdatedAt);
+  } catch (error) {
+    console.error("クラウド読み込み失敗:", error);
+  }
+}
+
 async function saveFavoritesToCloud() {
   if (!currentUser) return;
 
   try {
     await saveFavoritesToCloudRemote(db, FAVORITES_COLLECTION, currentUser.uid, favorites, favoritesUpdatedAt);
+  } catch (error) {
+    console.error("クラウド保存失敗:", error);
+  }
+}
+
+async function saveDifficultsToCloud() {
+  if (!currentUser) return;
+
+  try {
+    await saveDifficultsToCloudRemote(db, FAVORITES_COLLECTION, currentUser.uid, difficults, difficultsUpdatedAt);
   } catch (error) {
     console.error("クラウド保存失敗:", error);
   }
