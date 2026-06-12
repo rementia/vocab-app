@@ -1108,11 +1108,17 @@ function waitForSpeechSyncActivation() {
   bindSpeechSyncActivationEvents();
 }
 
-function handleSpeechSyncActivation() {
-  if (!speechSync || !speechSyncWaitingForUserActivation) return;
+function speakCurrentWordForSpeechSync() {
+  if (!speechSync) return;
   speechSyncWaitingForUserActivation = false;
   unbindSpeechSyncActivationEvents();
-  scheduleSpeechSyncAfterRender();
+  clearSpeechSyncTimer();
+  speakWord();
+}
+
+function handleSpeechSyncActivation() {
+  if (!speechSync || !speechSyncWaitingForUserActivation) return;
+  speakCurrentWordForSpeechSync();
 }
 
 function clearAutoPlayTimer() {
@@ -1379,6 +1385,7 @@ function toggleAutoPlay() {
   if (!isAutoPlayActive()) {
     clearAutoPlayTimer();
   } else {
+    speakCurrentWordForSpeechSync();
     startAutoPlayFromCurrentWord();
   }
 }
