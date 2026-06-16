@@ -1,4 +1,4 @@
-﻿import { normalizeWord } from './data.js';
+import { normalizeWordKey } from './wordIdentity.js';
 import { safeGetItem, safeSetItem } from './storage.js';
 
 let pronunciationEl = null;
@@ -12,7 +12,7 @@ export function initPronunciation({ el, getCurrentWord }) {
 }
 
 export function updateSpeechButtonAvailability(speakBtnEl) {
-  const supported = typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+  const supported = isSpeechSynthesisSupported();
   if (!speakBtnEl) return;
 
   speakBtnEl.disabled = !supported;
@@ -24,7 +24,7 @@ export function speakWord() {
   if (!getCurrentWordFn) return;
   const current = getCurrentWordFn();
   if (!current) return;
-  if (typeof window === 'undefined' || !('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) return;
+  if (!isSpeechSynthesisSupported()) return;
 
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(current.word);
@@ -37,7 +37,7 @@ export function speakWord() {
 export async function loadPronunciation(word) {
   if (!pronunciationEl) return;
 
-  const normalizedWord = normalizeWord(word);
+  const normalizedWord = normalizeWordKey(word);
   const key = `portfolio_pron_${normalizedWord}`;
   lastPronunciationRequest = normalizedWord;
 
@@ -55,39 +55,62 @@ export async function loadPronunciation(word) {
   pronunciationEl.textContent = '…';
 
   try {
-    const response = await fetch(
-      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
-      { signal: currentPronunciationController.signal }
-    );
-    const data = await response.json();
-
-    let phonetic = '';
-    if (Array.isArray(data) && data[0]) {
-      if (data[0].phonetic) {
-        phonetic = data[0].phonetic;
-      } else if (Array.isArray(data[0].phonetics)) {
-        const found = data[0].phonetics.find((item) => item && item.text);
-        phonetic = found ? found.text : '';
-      }
-    }
-
-    phonetic = phonetic.replace(/^\/|\/$/g, '');
+    const data = await fetchPronunciationData(word, currentPronunciationController.signal);
+    const phonetic = extractPhonetic(data);
     if (phonetic) {
       safeSetItem(key, phonetic);
     }
 
-    const current = getCurrentWordFn ? getCurrentWordFn() : null;
-    const currentWord = current ? normalizeWord(current.word) : '';
-    if (lastPronunciationRequest === normalizedWord && currentWord === normalizedWord) {
+    if (isCurrentPronunciationRequest(normalizedWord)) {
       pronunciationEl.textContent = phonetic || '発音記号なし';
     }
   } catch (error) {
     if (error.name !== 'AbortError') {
-      const current = getCurrentWordFn ? getCurrentWordFn() : null;
-      const currentWord = current ? normalizeWord(current.word) : '';
-      if (lastPronunciationRequest === normalizedWord && currentWord === normalizedWord) {
+      if (isCurrentPronunciationRequest(normalizedWord)) {
         pronunciationEl.textContent = '発音記号なし';
       }
     }
   }
+}
+
+async function fetchPronunciationData(word, signal) {
+  const response = await fetch(
+    `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
+    { signal }
+  );
+
+  if (response.ok === false) {
+    return null;
+  }
+
+  return response.json();
+}
+
+function isSpeechSynthesisSupported() {
+  return (
+    typeof window !== 'undefined' &&
+    'speechSynthesis' in window &&
+    'SpeechSynthesisUtterance' in window
+  );
+}
+
+function extractPhonetic(data) {
+  if (!Array.isArray(data) || !data[0]) return '';
+
+  const entry = data[0];
+  const phonetic = entry.phonetic || findPhoneticText(entry.phonetics);
+  return phonetic.replace(/^\/|\/$/g, '');
+}
+
+function findPhoneticText(phonetics) {
+  if (!Array.isArray(phonetics)) return '';
+
+  const found = phonetics.find((item) => item && item.text);
+  return found ? found.text : '';
+}
+
+function isCurrentPronunciationRequest(normalizedWord) {
+  const current = getCurrentWordFn ? getCurrentWordFn() : null;
+  const currentWord = current ? normalizeWordKey(current.word) : '';
+  return lastPronunciationRequest === normalizedWord && currentWord === normalizedWord;
 }

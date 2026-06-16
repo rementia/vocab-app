@@ -8,21 +8,22 @@ import {
 
 const wordsByVol = {
   vol1: [
-    { id: "vol1-1-alpha", word: "alpha", sourceVol: "vol1" },
-    { id: "vol1-2-beta", word: "beta", sourceVol: "vol1" }
+    { id: "alpha", word: "alpha", sourceVol: "vol1" },
+    { id: "beta", word: "beta", sourceVol: "vol1" }
   ],
   vol2: [
-    { id: "vol2-1-gamma", word: "gamma", sourceVol: "vol2" }
+    { id: "gamma", word: "gamma", sourceVol: "vol2" }
   ]
 };
 
 const difficults = {
-  "vol1-2-beta": { addedAt: 1 },
-  "vol2-1-gamma": { addedAt: 2 }
+  beta: { addedAt: 1 },
+  gamma: { addedAt: 2 }
 };
 
 assert.strictEqual(isDifficult(difficults, wordsByVol.vol1[1]), true);
 assert.strictEqual(isDifficult(difficults, wordsByVol.vol1[0]), false);
+
 assert.deepStrictEqual(
   buildDifficultEntries(wordsByVol, ["vol1", "vol2"], difficults).map((item) => item.word),
   ["beta", "gamma"]
@@ -48,7 +49,7 @@ const callbacks = {
   getWords: () => state.words,
   saveDifficultsToLocalOnly: (value) => { savedDifficults = { ...value }; },
   saveDifficultsUpdatedAt: (value) => { savedDifficultsUpdatedAt = value; },
-  clearAllShuffleCache: () => {},
+  clearWordOrderCache: () => {},
   requestListRebuild: () => {},
   updateDifficultToggleButton: () => {},
   saveDifficultsToCloud: () => { cloudSaves += 1; },
@@ -58,7 +59,7 @@ const callbacks = {
 };
 
 const result = toggleDifficultCurrentWord(state, callbacks);
-assert.strictEqual(Boolean(savedDifficults["vol1-1-alpha"]), true);
+assert.strictEqual(Boolean(savedDifficults.alpha), true);
 assert.strictEqual(typeof savedDifficultsUpdatedAt, "number");
 assert.strictEqual(cloudSaves, 1);
 assert.strictEqual(result.difficultsVersion, 1);
@@ -108,5 +109,36 @@ assert.strictEqual(modeState.frequencyMode, true);
 assert.strictEqual(modeApplyCalls, 1);
 assert.strictEqual(modeRendered, 1);
 assert.strictEqual(modeListRebuilds, 1);
+
+const emptyModeState = {
+  allWordsByVol: {},
+  currentMode: "vol",
+  indexByVol: { difficults: 0 },
+  difficults: {},
+  words: [],
+  randomMode: false,
+  frequencyMode: false
+};
+let emptyModeRendered = 0;
+let emptyModeListRebuilds = 0;
+const emptyModeResult = await loadDifficultsMode(
+  emptyModeState,
+  {
+    ensureAllVolumesLoaded: async () => { throw new Error("empty difficults should not load volumes"); },
+    setCurrentMode: (mode) => { emptyModeState.currentMode = mode; },
+    saveCurrentModeState: () => {},
+    clearNavigationHistory: () => {},
+    applyWordOrder: () => { emptyModeState.words = []; },
+    getWords: () => emptyModeState.words,
+    requestListRebuild: () => { emptyModeListRebuilds += 1; },
+    render: () => { emptyModeRendered += 1; },
+    updateDifficultToggleButton: () => {}
+  },
+  ["vol1", "vol2"]
+);
+assert.strictEqual(emptyModeResult.currentMode, "difficults");
+assert.strictEqual(emptyModeResult.index, 0);
+assert.strictEqual(emptyModeRendered, 1);
+assert.strictEqual(emptyModeListRebuilds, 1);
 
 console.log("All difficult word tests passed.");

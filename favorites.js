@@ -1,4 +1,5 @@
 import { doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { normalizeWordRecordMap } from "./wordIdentity.js";
 
 export async function loadFavoritesFromCloudRemote(db, collectionName, userUid) {
   try {
@@ -38,11 +39,11 @@ export async function saveDifficultsToCloudRemote(db, collectionName, userUid, d
 }
 
 export function normalizeFavoritesPayload(data) {
-  return data?.favorites && typeof data.favorites === "object" ? data.favorites : {};
+  return normalizeWordRecordMap(data?.favorites);
 }
 
 export function normalizeDifficultsPayload(data) {
-  return data?.difficults && typeof data.difficults === "object" ? data.difficults : {};
+  return normalizeWordRecordMap(data?.difficults);
 }
 
 export function getFavoritesUpdatedAt(data) {

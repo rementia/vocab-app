@@ -1,0 +1,2169 @@
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'data.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'difficultsManager.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'events.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'favorites.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'favoritesManager.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'pronunciation.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'reviewManager.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/checkHeaders.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/fetchCsv.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'test/data.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'test/difficultsManager.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'test/favoritesManager.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'test/reviewManager.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'test/run-tests.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'test/ui.test.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ui.js', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/README.md b/README.md[m
+[1mindex cb7c203..39f5d46 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -49,7 +49,7 @@[m [mFor the public portfolio demo, the app uses a small sample vocabulary dataset pr[m
+ [m
+ The public demo uses a dedicated sample vocabulary sheet.[m
+ [m
+[31m-Vocabulary data is loaded from a Google Sheets CSV export URL. Only demonstration data is included in this public version, and the dataset is intentionally kept small to avoid reproducing any specific commercial textbook or word list.[m
+[32m+[m[32mVocabulary data is loaded from a Google Sheets CSV export URL. The demo sheet uses `word`, `meaning`, and `level` columns, and the app maps `level` values 1-4 to vol.1-vol.4. Only demonstration data is included in this public version, and the dataset is intentionally kept small to avoid reproducing any specific commercial textbook or word list.[m
+ [m
+ Favorite words are saved separately in Cloud Firestore for each logged-in user.[m
+ [m
+[1mdiff --git a/app.js b/app.js[m
+[1mindex f9e378e..ff3df34 100644[m
+[1m--- a/app.js[m
+[1m+++ b/app.js[m
+[36m@@ -1,5 +1,5 @@[m
+ ﻿import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";[m
+[31m-import { sheetUrls, fetchWordsForVol } from './data.js';[m
+[32m+[m[32mimport { fetchWordsForVol } from './data.js';[m
+ import { getDomElements } from './dom.js';[m
+ import { auth, db, provider } from './firebaseClient.js';[m
+ import {[m
+[36m@@ -64,6 +64,8 @@[m [mimport {[m
+   resetReviewScore,[m
+   sortByReviewScore[m
+ } from './reviewManager.js';[m
+[32m+[m[32mimport { clampIndex } from './wordList.js';[m
+[32m+[m[32mimport { normalizeWordRecordMap } from './wordIdentity.js';[m
+ import {[m
+   bindKeyboardEvents,[m
+   bindTouchEvents,[m
+[36m@@ -257,8 +259,9 @@[m [mconst uiContext = {[m
+ };[m
+ [m
+ const AUTO_PLAY_SKIP_LOCK_MS = 500;[m
+[32m+[m[32mconst SPEECH_SYNC_DELAY_MS = 260;[m
+ [m
+[31m-let shuffledWordsMap = {};[m
+[32m+[m[32mlet wordOrderCache = {};[m
+ [m
+ async function init() {[m
+   loadSavedState();[m
+[36m@@ -424,7 +427,7 @@[m [mfunction handleToggleFavoriteCurrentWord() {[m
+       getWords: () => words,[m
+       saveFavoritesToLocalOnly,[m
+       saveFavoritesUpdatedAt,[m
+[31m-      clearAllShuffleCache,[m
+[32m+[m[32m      clearWordOrderCache,[m
+       requestListRebuild,[m
+       updateFavoriteToggleButton,[m
+       saveFavoritesToCloud,[m
+[36m@@ -468,7 +471,7 @@[m [mfunction handleToggleDifficultCurrentWord() {[m
+       getWords: () => words,[m
+       saveDifficultsToLocalOnly,[m
+       saveDifficultsUpdatedAt,[m
+[31m-      clearAllShuffleCache,[m
+[32m+[m[32m      clearWordOrderCache,[m
+       requestListRebuild,[m
+       updateDifficultToggleButton,[m
+       saveDifficultsToCloud,[m
+[36m@@ -566,12 +569,12 @@[m [mfunction bindUIEvents() {[m
+   });[m
+ [m
+   if (timeSlider && timeValue) {[m
+[31m-    timeSlider.value = Math.min(challengeTime / 1000, Number(timeSlider.max));[m
+[31m-    timeValue.textContent = (challengeTime / 1000).toFixed(1);[m
+[32m+[m[32m    setSecondsSliderValue(timeSlider, timeValue, challengeTime);[m
+ [m
+     timeSlider.addEventListener("input", () => {[m
+[31m-      challengeTime = parseFloat(timeSlider.value) * 1000;[m
+[31m-      timeValue.textContent = parseFloat(timeSlider.value).toFixed(1);[m
+[32m+[m[32m      const seconds = readSliderSeconds(timeSlider);[m
+[32m+[m[32m      challengeTime = seconds * 1000;[m
+[32m+[m[32m      timeValue.textContent = formatSeconds(seconds);[m
+       saveChallengeTimeState(challengeTime);[m
+ [m
+       if (challengeMode && !isAutoPlayActive()) {[m
+[36m@@ -581,12 +584,12 @@[m [mfunction bindUIEvents() {[m
+   }[m
+ [m
+   if (displayTimeSlider && displayTimeValue) {[m
+[31m-    displayTimeSlider.value = Math.min(displayTime / 1000, Number(displayTimeSlider.max));[m
+[31m-    displayTimeValue.textContent = (displayTime / 1000).toFixed(1);[m
+[32m+[m[32m    setSecondsSliderValue(displayTimeSlider, displayTimeValue, displayTime);[m
+ [m
+     displayTimeSlider.addEventListener("input", () => {[m
+[31m-      displayTime = parseFloat(displayTimeSlider.value) * 1000;[m
+[31m-      displayTimeValue.textContent = parseFloat(displayTimeSlider.value).toFixed(1);[m
+[32m+[m[32m      const seconds = readSliderSeconds(displayTimeSlider);[m
+[32m+[m[32m      displayTime = seconds * 1000;[m
+[32m+[m[32m      displayTimeValue.textContent = formatSeconds(seconds);[m
+       saveDisplayTimeState(displayTime);[m
+     });[m
+   }[m
+[36m@@ -602,16 +605,35 @@[m [mfunction bindUIEvents() {[m
+ [m
+   listEl?.addEventListener("click", (event) => {[m
+     const target = event.target instanceof Element ? event.target.closest(".word-item") : null;[m
+[31m-    if (!(target instanceof HTMLElement)) return;[m
+[31m-[m
+[31m-    const nextIndex = Number(target.dataset.index);[m
+[31m-    if (Number.isNaN(nextIndex)) return;[m
+[32m+[m[32m    const nextIndex = readWordItemIndex(target);[m
+[32m+[m[32m    if (nextIndex === null) return;[m
+ [m
+     navMoveToIndex(nextIndex, { pushHistory: true });[m
+     scheduleAutoPlayAfterRender();[m
+   });[m
+ }[m
+ [m
+[32m+[m[32mfunction setSecondsSliderValue(slider, label, milliseconds) {[m
+[32m+[m[32m  const seconds = Math.min(milliseconds / 1000, Number(slider.max));[m
+[32m+[m[32m  slider.value = seconds;[m
+[32m+[m[32m  label.textContent = formatSeconds(seconds);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction readSliderSeconds(slider) {[m
+[32m+[m[32m  return parseFloat(slider.value);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction formatSeconds(seconds) {[m
+[32m+[m[32m  return seconds.toFixed(1);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction readWordItemIndex(item) {[m
+[32m+[m[32m  if (!(item instanceof HTMLElement)) return null;[m
+[32m+[m
+[32m+[m[32m  const itemIndex = Number(item.dataset.index);[m
+[32m+[m[32m  return Number.isNaN(itemIndex) ? null : itemIndex;[m
+[32m+[m[32m}[m
+[32m+[m
+ function getDefaultSidebarOpen() {[m
+   return !window.matchMedia?.("(pointer: coarse)").matches;[m
+ }[m
+[36m@@ -634,7 +656,7 @@[m [mfunction loadSavedState() {[m
+   const savedFrequencyMode = safeGetItem(STORAGE_KEYS.frequencyMode);[m
+   const savedMode = safeGetItem(STORAGE_KEYS.mode);[m
+ [m
+[31m-  if (savedVol && sheetUrls[savedVol]) currentVol = savedVol;[m
+[32m+[m[32m  if (savedVol && volOrder.includes(savedVol)) currentVol = savedVol;[m
+   sidebarOpen = savedSidebarOpen !== null ? savedSidebarOpen === "true" : getDefaultSidebarOpen();[m
+   if (savedSpeechSync !== null) speechSync = savedSpeechSync === "true";[m
+ [m
+[36m@@ -653,7 +675,7 @@[m [mfunction loadSavedState() {[m
+   if (savedFavorites) {[m
+     try {[m
+       const parsedFavorites = JSON.parse(savedFavorites);[m
+[31m-      favorites = parsedFavorites && typeof parsedFavorites === "object" ? parsedFavorites : {};[m
+[32m+[m[32m      favorites = normalizeWordRecordMap(parsedFavorites);[m
+     } catch {[m
+       favorites = {};[m
+     }[m
+[36m@@ -663,7 +685,7 @@[m [mfunction loadSavedState() {[m
+   if (savedDifficults) {[m
+     try {[m
+       const parsedDifficults = JSON.parse(savedDifficults);[m
+[31m-      difficults = parsedDifficults && typeof parsedDifficults === "object" ? parsedDifficults : {};[m
+[32m+[m[32m      difficults = normalizeWordRecordMap(parsedDifficults);[m
+     } catch {[m
+       difficults = {};[m
+     }[m
+[36m@@ -671,7 +693,7 @@[m [mfunction loadSavedState() {[m
+   if (savedReviewScores) {[m
+     try {[m
+       const parsedReviewScores = JSON.parse(savedReviewScores);[m
+[31m-      reviewScores = parsedReviewScores && typeof parsedReviewScores === "object" ? parsedReviewScores : {};[m
+[32m+[m[32m      reviewScores = normalizeWordRecordMap(parsedReviewScores);[m
+     } catch {[m
+       reviewScores = {};[m
+     }[m
+[36m@@ -745,7 +767,7 @@[m [mfunction clearUserMarksForLoggedOut() {[m
+   difficultsUpdatedAt = 0;[m
+   favoritesVersion += 1;[m
+   difficultsVersion += 1;[m
+[31m-  clearAllShuffleCache();[m
+[32m+[m[32m  clearWordOrderCache();[m
+   requestListRebuild();[m
+   render();[m
+ }[m
+[36m@@ -763,7 +785,7 @@[m [mfunction subscribeFavoritesRealtime() {[m
+ [m
+     saveFavoritesToLocalOnly(favorites);[m
+     saveFavoritesUpdatedAt(favoritesUpdatedAt);[m
+[31m-    clearAllShuffleCache();[m
+[32m+[m[32m    clearWordOrderCache();[m
+     requestListRebuild();[m
+ [m
+     if (currentMode === "favorites") {[m
+[36m@@ -779,7 +801,7 @@[m [mfunction subscribeFavoritesRealtime() {[m
+ [m
+       saveDifficultsToLocalOnly(difficults);[m
+       saveDifficultsUpdatedAt(difficultsUpdatedAt);[m
+[31m-      clearAllShuffleCache();[m
+[32m+[m[32m      clearWordOrderCache();[m
+       requestListRebuild();[m
+ [m
+       if (currentMode === "difficults") {[m
+[36m@@ -892,9 +914,9 @@[m [masync function loadSheet(volName) {[m
+     saveCurrentModeState(currentMode);[m
+     // 指定ボリュームを先に読み込み、words を確実に設定する[m
+     await ensureVolLoaded(volName);[m
+[31m-    clearAllShuffleCache();[m
+[32m+[m[32m    clearWordOrderCache();[m
+     applyWordOrder();[m
+[31m-    index = Math.min(indexByVol[volName] || 0, Math.max(words.length - 1, 0));[m
+[32m+[m[32m    index = clampIndex(indexByVol[volName] || 0, words);[m
+ [m
+     requestListRebuild();[m
+     render();[m
+[36m@@ -915,7 +937,7 @@[m [masync function preloadOtherVolumesInBackground() {[m
+   await Promise.all(otherVols.map((vol) => ensureVolLoaded(vol).catch(() => {})));[m
+ }[m
+ [m
+[31m-function makeShuffleKey(orderMode) {[m
+[32m+[m[32mfunction makeWordOrderCacheKey(orderMode) {[m
+   const scope = currentMode === "favorites"[m
+     ? "favorites:all"[m
+     : currentMode === "difficults"[m
+[36m@@ -946,8 +968,8 @@[m [mfunction applyWordOrder(resetIndex = false, preserveCurrentId = null) {[m
+       : frequencyMode[m
+         ? "frequency"[m
+         : "random";[m
+[31m-    const shuffleKey = makeShuffleKey(orderMode);[m
+[31m-    const currentCache = shuffledWordsMap[shuffleKey];[m
+[32m+[m[32m    const cacheKey = makeWordOrderCacheKey(orderMode);[m
+[32m+[m[32m    const currentCache = wordOrderCache[cacheKey];[m
+ [m
+     const cacheValid =[m
+       Array.isArray(currentCache) &&[m
+[36m@@ -955,26 +977,26 @@[m [mfunction applyWordOrder(resetIndex = false, preserveCurrentId = null) {[m
+       currentCache.every((item) => baseWords.some((base) => base.id === item.id));[m
+ [m
+     if (!cacheValid) {[m
+[31m-      shuffledWordsMap[shuffleKey] = frequencyMode[m
+[32m+[m[32m      wordOrderCache[cacheKey] = frequencyMode[m
+         ? sortByReviewScore(baseWords, (item) => getReviewScore(reviewScores, item), { randomizeTies: randomMode })[m
+         : shuffleArray(baseWords);[m
+     }[m
+ [m
+[31m-    words = shuffledWordsMap[shuffleKey];[m
+[32m+[m[32m    words = wordOrderCache[cacheKey];[m
+   } else {[m
+     words = baseWords;[m
+   }[m
+ [m
+   if (preserveCurrentId) {[m
+     const preservedIndex = words.findIndex((item) => item && item.id === preserveCurrentId);[m
+[31m-    index = preservedIndex >= 0 ? preservedIndex : Math.min(index, Math.max(words.length - 1, 0));[m
+[32m+[m[32m    index = preservedIndex >= 0 ? preservedIndex : clampIndex(index, words);[m
+   } else {[m
+[31m-    index = resetIndex ? 0 : Math.min(index, Math.max(words.length - 1, 0));[m
+[32m+[m[32m    index = resetIndex ? 0 : clampIndex(index, words);[m
+   }[m
+ }[m
+ [m
+[31m-function clearAllShuffleCache() {[m
+[31m-  shuffledWordsMap = {};[m
+[32m+[m[32mfunction clearWordOrderCache() {[m
+[32m+[m[32m  wordOrderCache = {};[m
+ }[m
+ [m
+ function requestListRebuild() {[m
+[36m@@ -1248,7 +1270,7 @@[m [mfunction scheduleSpeechSync() {[m
+   clearSpeechSyncTimer();[m
+   speechSyncTimer = setTimeout(() => {[m
+     speakWord();[m
+[31m-  }, 260);[m
+[32m+[m[32m  }, SPEECH_SYNC_DELAY_MS);[m
+ }[m
+ [m
+ function scheduleSpeechSyncAfterRender() {[m
+[36m@@ -1292,20 +1314,21 @@[m [mfunction getSearchResultItems() {[m
+     .filter((item) => item instanceof HTMLElement);[m
+ }[m
+ [m
+[31m-function moveToSearchResult(direction) {[m
+[31m-  const resultItems = getSearchResultItems();[m
+[31m-  if (!resultItems.length) return;[m
+[31m-[m
+[32m+[m[32mfunction getNextSearchResultItem(resultItems, direction) {[m
+   const activeResultIndex = resultItems.findIndex((item) => Number(item.dataset.index) === index);[m
+   const fallbackIndex = direction > 0 ? 0 : resultItems.length - 1;[m
+   const nextResultIndex = activeResultIndex >= 0[m
+     ? (activeResultIndex + direction + resultItems.length) % resultItems.length[m
+     : fallbackIndex;[m
+[31m-  const nextItem = resultItems[nextResultIndex];[m
+[31m-  if (!(nextItem instanceof HTMLElement)) return;[m
+[32m+[m[32m  return resultItems[nextResultIndex];[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction moveToSearchResult(direction) {[m
+[32m+[m[32m  const resultItems = getSearchResultItems();[m
+[32m+[m[32m  if (!resultItems.length) return;[m
+ [m
+[31m-  const nextIndex = Number(nextItem.dataset.index);[m
+[31m-  if (Number.isNaN(nextIndex)) return;[m
+[32m+[m[32m  const nextIndex = readWordItemIndex(getNextSearchResultItem(resultItems, direction));[m
+[32m+[m[32m  if (nextIndex === null) return;[m
+ [m
+   navMoveToIndex(nextIndex, { pushHistory: true });[m
+   scheduleAutoPlayAfterRender();[m
+[36m@@ -1395,7 +1418,7 @@[m [mfunction toggleRandomMode() {[m
+   saveRandomModeState(randomMode);[m
+   updateRandomButton();[m
+   navClearNavigationHistory();[m
+[31m-  clearAllShuffleCache();[m
+[32m+[m[32m  clearWordOrderCache();[m
+ [m
+   if (isAutoPlayActive()) {[m
+     wordOrderUpdatePending = true;[m
+[36m@@ -1414,7 +1437,7 @@[m [mfunction toggleFrequencyMode() {[m
+   saveFrequencyModeState(frequencyMode);[m
+   updateFrequencyButton();[m
+   navClearNavigationHistory();[m
+[31m-  clearAllShuffleCache();[m
+[32m+[m[32m  clearWordOrderCache();[m
+ [m
+   if (isAutoPlayActive()) {[m
+     wordOrderUpdatePending = true;[m
+[1mdiff --git a/data.js b/data.js[m
+[1mindex bfefecf..6971d55 100644[m
+[1m--- a/data.js[m
+[1m+++ b/data.js[m
+[36m@@ -1,10 +1,20 @@[m
+[31m-export const sheetUrls = {[m
+[31m-  vol1: "https://docs.google.com/spreadsheets/d/17XhRsbdw5NfgGPsmkam8_B1F2mtlGMJ3Uh00l5UIIMY/export?format=csv&gid=0",[m
+[31m-  vol2: "https://docs.google.com/spreadsheets/d/17XhRsbdw5NfgGPsmkam8_B1F2mtlGMJ3Uh00l5UIIMY/export?format=csv&gid=1971123896",[m
+[31m-  vol3: "https://docs.google.com/spreadsheets/d/17XhRsbdw5NfgGPsmkam8_B1F2mtlGMJ3Uh00l5UIIMY/export?format=csv&gid=228942471",[m
+[31m-  vol4: "https://docs.google.com/spreadsheets/d/17XhRsbdw5NfgGPsmkam8_B1F2mtlGMJ3Uh00l5UIIMY/export?format=csv&gid=883680225"[m
+[32m+[m[32mimport { normalizeWordKey } from "./wordIdentity.js";[m
+[32m+[m
+[32m+[m[32mexport const SHEET_URL = "https://docs.google.com/spreadsheets/d/17XhRsbdw5NfgGPsmkam8_B1F2mtlGMJ3Uh00l5UIIMY/export?format=csv&gid=0";[m
+[32m+[m[32mconst VOL_NAMES = ["vol1", "vol2", "vol3", "vol4"];[m
+[32m+[m[32mconst LEVEL_TO_VOL = {[m
+[32m+[m[32m  "1": "vol1",[m
+[32m+[m[32m  "2": "vol2",[m
+[32m+[m[32m  "3": "vol3",[m
+[32m+[m[32m  "4": "vol4",[m
+[32m+[m[32m  vol1: "vol1",[m
+[32m+[m[32m  vol2: "vol2",[m
+[32m+[m[32m  vol3: "vol3",[m
+[32m+[m[32m  vol4: "vol4"[m
+ };[m
+ [m
+[32m+[m[32mlet wordsByVolCache = null;[m
+[32m+[m
+ export async function fetchWithRetry(url, retryCount = 1) {[m
+   let lastError = null;[m
+ [m
+[36m@@ -79,10 +89,6 @@[m [mexport function parseCsv(text) {[m
+   return rows;[m
+ }[m
+ [m
+[31m-export function normalizeWord(word) {[m
+[31m-  return String(word).toLowerCase().trim();[m
+[31m-}[m
+[31m-[m
+ function hasHeaderRow(row) {[m
+   const headers = row.map((cell) => String(cell ?? "").toLowerCase().trim());[m
+   return ([m
+[36m@@ -91,32 +97,88 @@[m [mfunction hasHeaderRow(row) {[m
+   );[m
+ }[m
+ [m
+[31m-export function parseCsvToWords(text, volName) {[m
+[31m-  const rows = parseCsv(text)[m
+[32m+[m[32mfunction getColumnIndex(headers, names, fallbackIndex) {[m
+[32m+[m[32m  const index = headers.findIndex((value) => names.includes(value));[m
+[32m+[m[32m  return index >= 0 ? index : fallbackIndex;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction normalizeLevelToVol(level) {[m
+[32m+[m[32m  const value = String(level ?? "").toLowerCase().trim();[m
+[32m+[m[32m  const normalizedValue = value.replace(/^vol\.?\s*/, "vol");[m
+[32m+[m[32m  return LEVEL_TO_VOL[normalizedValue] || "";[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction getTrimmedRows(text) {[m
+[32m+[m[32m  return parseCsv(text)[m
+     .map((cols) => cols.map((col) => String(col ?? "").trim()))[m
+     .filter((cols) => cols.some((col) => col !== ""));[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction getCsvColumnIndexes(rows, startIndex) {[m
+[32m+[m[32m  const headers = startIndex === 1[m
+[32m+[m[32m    ? rows[0].map((cell) => String(cell ?? "").toLowerCase().trim())[m
+[32m+[m[32m    : [];[m
+[32m+[m
+[32m+[m[32m  return {[m
+[32m+[m[32m    wordIndex: getColumnIndex(headers, ["word", "単語"], 0),[m
+[32m+[m[32m    meaningIndex: getColumnIndex(headers, ["meaning", "意味"], 1),[m
+[32m+[m[32m    levelIndex: getColumnIndex(headers, ["level", "レベル"], -1)[m
+[32m+[m[32m  };[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction createEmptyWordsByVol() {[m
+[32m+[m[32m  return Object.fromEntries(VOL_NAMES.map((volName) => [volName, []]));[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction createWordEntry(word, meaning, sourceVol) {[m
+[32m+[m[32m  return {[m
+[32m+[m[32m    id: normalizeWordKey(word),[m
+[32m+[m[32m    word,[m
+[32m+[m[32m    meaning,[m
+[32m+[m[32m    sourceVol[m
+[32m+[m[32m  };[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mexport function parseCsvToWordsByVol(text) {[m
+[32m+[m[32m  const rows = getTrimmedRows(text);[m
+ [m
+   const startIndex = rows.length > 0 && hasHeaderRow(rows[0]) ? 1 : 0;[m
+[32m+[m[32m  const { wordIndex, meaningIndex, levelIndex } = getCsvColumnIndexes(rows, startIndex);[m
+[32m+[m[32m  const wordsByVol = createEmptyWordsByVol();[m
+[32m+[m
+[32m+[m[32m  if (levelIndex < 0) return wordsByVol;[m
+[32m+[m
+[32m+[m[32m  rows.slice(startIndex).forEach((cols) => {[m
+[32m+[m[32m    const sourceVol = normalizeLevelToVol(cols[levelIndex]);[m
+[32m+[m[32m    if (!sourceVol) return;[m
+ [m
+[31m-  return rows.slice(startIndex)[m
+[31m-    .map((cols, rowIndex) => {[m
+[31m-      const word = cols[0] || "";[m
+[31m-      const meaning = cols.slice(1).filter(Boolean).join(", ").trim();[m
+[31m-      const id = `${volName}-${rowIndex + startIndex + 1}-${normalizeWord(word)}`;[m
+[31m-      return {[m
+[31m-        id,[m
+[31m-        word,[m
+[31m-        meaning,[m
+[31m-        sourceVol: volName[m
+[31m-      };[m
+[31m-    })[m
+[31m-    .filter((item) => item.word);[m
+[32m+[m[32m    const word = cols[wordIndex] || "";[m
+[32m+[m[32m    if (!word) return;[m
+[32m+[m
+[32m+[m[32m    const meaning = cols[meaningIndex] || "";[m
+[32m+[m[32m    wordsByVol[sourceVol].push(createWordEntry(word, meaning, sourceVol));[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  return wordsByVol;[m
+ }[m
+ [m
+[31m-export async function fetchWordsForVol(volName) {[m
+[31m-  const response = await fetchWithRetry(sheetUrls[volName], 1);[m
+[32m+[m[32mexport function parseCsvToWords(text, volName) {[m
+[32m+[m[32m  return parseCsvToWordsByVol(text)[volName] || [];[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32masync function fetchWordsByVol() {[m
+[32m+[m[32m  if (wordsByVolCache) return wordsByVolCache;[m
+[32m+[m
+[32m+[m[32m  const response = await fetchWithRetry(SHEET_URL, 1);[m
+   const text = await response.text();[m
+[31m-  const words = parseCsvToWords(text, volName);[m
+[32m+[m[32m  wordsByVolCache = parseCsvToWordsByVol(text);[m
+[32m+[m
+[32m+[m[32m  return wordsByVolCache;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mexport async function fetchWordsForVol(volName) {[m
+[32m+[m[32m  const wordsByVol = await fetchWordsByVol();[m
+[32m+[m[32m  const words = wordsByVol[volName] || [];[m
+   if (!words.length) {[m
+     throw new Error(`No words parsed from CSV for ${volName}`);[m
+   }[m
+[1mdiff --git a/difficultsManager.js b/difficultsManager.js[m
+[1mindex bab4891..05d44b5 100644[m
+[1m--- a/difficultsManager.js[m
+[1m+++ b/difficultsManager.js[m
+[36m@@ -1,5 +1,8 @@[m
+[31m-export function makeDifficultKey(item) {[m
+[31m-  return item.id;[m
+[32m+[m[32mimport { makeWordKey } from "./wordIdentity.js";[m
+[32m+[m[32mimport { buildMarkedWordEntries, clampIndex } from "./wordList.js";[m
+[32m+[m
+[32m+[m[32mfunction makeDifficultKey(item) {[m
+[32m+[m[32m  return makeWordKey(item);[m
+ }[m
+ [m
+ export function isDifficult(difficults, item) {[m
+[36m@@ -7,17 +10,64 @@[m [mexport function isDifficult(difficults, item) {[m
+ }[m
+ [m
+ export function buildDifficultEntries(allWordsByVol, volOrder, difficults) {[m
+[31m-  const entries = [];[m
+[32m+[m[32m  return buildMarkedWordEntries(allWordsByVol, volOrder, difficults, isDifficult);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction createDifficultsResult(state, updated = {}) {[m
+[32m+[m[32m  return {[m
+[32m+[m[32m    ...updated,[m
+[32m+[m[32m    currentMode: state.currentMode,[m
+[32m+[m[32m    index: state.index,[m
+[32m+[m[32m    indexByVol: state.indexByVol,[m
+[32m+[m[32m    randomMode: state.randomMode,[m
+[32m+[m[32m    frequencyMode: state.frequencyMode[m
+[32m+[m[32m  };[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction touchDifficultsChanged([m
+[32m+[m[32m  state,[m
+[32m+[m[32m  saveDifficultsToLocalOnly,[m
+[32m+[m[32m  saveDifficultsUpdatedAt,[m
+[32m+[m[32m  clearWordOrderCache,[m
+[32m+[m[32m  requestListRebuild[m
+[32m+[m[32m) {[m
+[32m+[m[32m  state.difficultsUpdatedAt = Date.now();[m
+[32m+[m[32m  state.difficultsVersion = (Number(state.difficultsVersion) || 0) + 1;[m
+[32m+[m[32m  saveDifficultsToLocalOnly(state.difficults);[m
+[32m+[m[32m  saveDifficultsUpdatedAt(state.difficultsUpdatedAt);[m
+[32m+[m[32m  clearWordOrderCache();[m
+[32m+[m[32m  requestListRebuild();[m
+[32m+[m[32m  return {[m
+[32m+[m[32m    difficultsUpdatedAt: state.difficultsUpdatedAt,[m
+[32m+[m[32m    difficultsVersion: state.difficultsVersion[m
+[32m+[m[32m  };[m
+[32m+[m[32m}[m
+ [m
+[31m-  volOrder.forEach((vol) => {[m
+[31m-    (allWordsByVol[vol] || []).forEach((item) => {[m
+[31m-      if (isDifficult(difficults, item)) {[m
+[31m-        entries.push(item);[m
+[31m-      }[m
+[31m-    });[m
+[31m-  });[m
+[32m+[m[32mfunction toggleDifficultRecord(difficults, key) {[m
+[32m+[m[32m  if (difficults[key]) {[m
+[32m+[m[32m    delete difficults[key];[m
+[32m+[m[32m  } else {[m
+[32m+[m[32m    difficults[key] = { addedAt: Date.now() };[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction saveCurrentDifficultIndex(state, callbacks, currentId) {[m
+[32m+[m[32m  callbacks.applyWordOrder(false);[m
+ [m
+[31m-  return entries;[m
+[32m+[m[32m  const currentWords = callbacks.getWords();[m
+[32m+[m[32m  const nextIndex = currentWords.findIndex((item) => item.id === currentId);[m
+[32m+[m[32m  state.index = nextIndex >= 0 ? nextIndex : clampIndex(state.index, currentWords);[m
+[32m+[m
+[32m+[m[32m  if (currentWords.length > 0) {[m
+[32m+[m[32m    state.indexByVol.difficults = state.index;[m
+[32m+[m[32m    callbacks.saveIndexByVol(state.indexByVol);[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction finishDifficultToggle(state, callbacks, updated) {[m
+[32m+[m[32m  callbacks.render();[m
+[32m+[m[32m  callbacks.updateDifficultToggleButton();[m
+[32m+[m[32m  return createDifficultsResult(state, updated);[m
+ }[m
+ [m
+ export function toggleDifficultCurrentWord(state, callbacks) {[m
+[36m@@ -25,19 +75,16 @@[m [mexport function toggleDifficultCurrentWord(state, callbacks) {[m
+   if (!current) return null;[m
+ [m
+   const key = makeDifficultKey(current);[m
+[32m+[m[32m  toggleDifficultRecord(state.difficults, key);[m
+ [m
+[31m-  if (state.difficults[key]) {[m
+[31m-    delete state.difficults[key];[m
+[31m-  } else {[m
+[31m-    state.difficults[key] = { addedAt: Date.now() };[m
+[31m-  }[m
+[32m+[m[32m  const updated = touchDifficultsChanged([m
+[32m+[m[32m    state,[m
+[32m+[m[32m    callbacks.saveDifficultsToLocalOnly,[m
+[32m+[m[32m    callbacks.saveDifficultsUpdatedAt,[m
+[32m+[m[32m    callbacks.clearWordOrderCache,[m
+[32m+[m[32m    callbacks.requestListRebuild[m
+[32m+[m[32m  );[m
+ [m
+[31m-  state.difficultsUpdatedAt = Date.now();[m
+[31m-  state.difficultsVersion = (Number(state.difficultsVersion) || 0) + 1;[m
+[31m-  callbacks.saveDifficultsToLocalOnly(state.difficults);[m
+[31m-  callbacks.saveDifficultsUpdatedAt(state.difficultsUpdatedAt);[m
+[31m-  callbacks.clearAllShuffleCache();[m
+[31m-  callbacks.requestListRebuild();[m
+   callbacks.updateDifficultToggleButton();[m
+ [m
+   if (state.currentUser) {[m
+[36m@@ -45,62 +92,51 @@[m [mexport function toggleDifficultCurrentWord(state, callbacks) {[m
+   }[m
+ [m
+   if (state.currentMode === "difficults") {[m
+[31m-    const currentId = current.id;[m
+[31m-    callbacks.applyWordOrder(false);[m
+[31m-    const currentWords = callbacks.getWords();[m
+[31m-    const nextIndex = currentWords.findIndex((item) => item.id === currentId);[m
+[31m-    state.index = nextIndex >= 0 ? nextIndex : Math.min(state.index, Math.max(currentWords.length - 1, 0));[m
+[31m-[m
+[31m-    if (currentWords.length === 0) {[m
+[31m-      state.index = 0;[m
+[31m-      callbacks.render();[m
+[31m-      callbacks.updateDifficultToggleButton();[m
+[31m-      return {[m
+[31m-        index: state.index,[m
+[31m-        indexByVol: state.indexByVol,[m
+[31m-        difficultsUpdatedAt: state.difficultsUpdatedAt,[m
+[31m-        difficultsVersion: state.difficultsVersion[m
+[31m-      };[m
+[31m-    }[m
+[31m-[m
+[31m-    state.indexByVol.difficults = state.index;[m
+[31m-    callbacks.saveIndexByVol(state.indexByVol);[m
+[32m+[m[32m    saveCurrentDifficultIndex(state, callbacks, current.id);[m
+   }[m
+ [m
+[31m-  callbacks.render();[m
+[31m-  callbacks.updateDifficultToggleButton();[m
+[31m-  return {[m
+[31m-    index: state.index,[m
+[31m-    indexByVol: state.indexByVol,[m
+[31m-    difficultsUpdatedAt: state.difficultsUpdatedAt,[m
+[31m-    difficultsVersion: state.difficultsVersion[m
+[31m-  };[m
+[32m+[m[32m  return finishDifficultToggle(state, callbacks, updated);[m
+ }[m
+ [m
+[31m-export async function loadDifficultsMode(state, callbacks, volOrder) {[m
+[31m-  await callbacks.ensureAllVolumesLoaded();[m
+[31m-[m
+[32m+[m[32mfunction setDifficultsMode(state, callbacks) {[m
+   callbacks.setCurrentMode("difficults");[m
+   state.currentMode = "difficults";[m
+   callbacks.saveCurrentModeState("difficults");[m
+[32m+[m[32m  callbacks.clearNavigationHistory();[m
+[32m+[m[32m}[m
+ [m
+[32m+[m[32mfunction hasDifficultRecords(difficults) {[m
+[32m+[m[32m  return Object.keys(difficults || {}).length > 0;[m
+[32m+[m[32m}[m
+ [m
+[31m-  callbacks.clearNavigationHistory();[m
+[31m-  callbacks.applyWordOrder(false);[m
+[32m+[m[32mfunction finishEmptyDifficultsMode(state, callbacks) {[m
+[32m+[m[32m  callbacks.applyWordOrder(true);[m
+[32m+[m[32m  state.index = 0;[m
+[32m+[m[32m  callbacks.requestListRebuild();[m
+[32m+[m[32m  callbacks.render();[m
+[32m+[m[32m  callbacks.updateDifficultToggleButton();[m
+[32m+[m[32m  return createDifficultsResult(state);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction chooseDifficultIndex(state, callbacks) {[m
+   const currentWords = callbacks.getWords();[m
+[31m-  state.index = Math.min(state.indexByVol.difficults || 0, Math.max(currentWords.length - 1, 0));[m
+[32m+[m[32m  state.index = clampIndex(state.indexByVol.difficults || 0, currentWords);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mexport async function loadDifficultsMode(state, callbacks, volOrder) {[m
+[32m+[m[32m  setDifficultsMode(state, callbacks);[m
+ [m
+[31m-  if (currentWords.length === 0) {[m
+[31m-    state.index = 0;[m
+[32m+[m[32m  if (!hasDifficultRecords(state.difficults)) {[m
+[32m+[m[32m    return finishEmptyDifficultsMode(state, callbacks);[m
+   }[m
+ [m
+[32m+[m[32m  await callbacks.ensureAllVolumesLoaded();[m
+[32m+[m
+[32m+[m[32m  callbacks.applyWordOrder(false);[m
+[32m+[m[32m  chooseDifficultIndex(state, callbacks);[m
+[32m+[m
+   callbacks.requestListRebuild();[m
+   callbacks.render();[m
+   callbacks.updateDifficultToggleButton();[m
+[31m-  return {[m
+[31m-    currentMode: state.currentMode,[m
+[31m-    index: state.index,[m
+[31m-    randomMode: state.randomMode,[m
+[31m-    frequencyMode: state.frequencyMode[m
+[31m-  };[m
+[32m+[m[32m  return createDifficultsResult(state);[m
+ }[m
+[1mdiff --git a/events.js b/events.js[m
+[1mindex eab5403..ccf8f87 100644[m
+[1m--- a/events.js[m
+[1m+++ b/events.js[m
+[36m@@ -15,104 +15,133 @@[m [mexport function bindKeyboardEvents({[m
+   toggleSidebar,[m
+   toggleRandomMode[m
+ }) {[m
+[32m+[m[32m  const handlers = {[m
+[32m+[m[32m    prevWord,[m
+[32m+[m[32m    nextWord,[m
+[32m+[m[32m    speakWord,[m
+[32m+[m[32m    handleToggleFavoriteCurrentWord,[m
+[32m+[m[32m    handleToggleDifficultCurrentWord,[m
+[32m+[m[32m    decreaseReviewScore,[m
+[32m+[m[32m    resetReviewScore,[m
+[32m+[m[32m    increaseReviewScore,[m
+[32m+[m[32m    focusSearch,[m
+[32m+[m[32m    clearSearch,[m
+[32m+[m[32m    selectNextSearchResult,[m
+[32m+[m[32m    selectPreviousSearchResult,[m
+[32m+[m[32m    closeSidebar,[m
+[32m+[m[32m    toggleSidebar,[m
+[32m+[m[32m    toggleRandomMode[m
+[32m+[m[32m  };[m
+[32m+[m
+   document.addEventListener("keydown", (event) => {[m
+     if (event.isComposing) return;[m
+ [m
+[31m-    const target = event.target;[m
+[31m-    const isTextInput =[m
+[31m-      target instanceof HTMLInputElement ||[m
+[31m-      target instanceof HTMLTextAreaElement ||[m
+[31m-      target instanceof HTMLSelectElement;[m
+[31m-[m
+[31m-    if (isTextInput) {[m
+[31m-      if (event.key === "Escape") {[m
+[31m-        event.preventDefault();[m
+[31m-        if (!clearSearch()) target.blur();[m
+[31m-      }[m
+[31m-      if (event.key === "Enter") {[m
+[31m-        event.preventDefault();[m
+[31m-        if (event.shiftKey) {[m
+[31m-          selectPreviousSearchResult();[m
+[31m-        } else {[m
+[31m-          selectNextSearchResult();[m
+[31m-        }[m
+[31m-      }[m
+[31m-      return;[m
+[31m-    }[m
+[31m-[m
+[31m-    if (event.ctrlKey || event.metaKey || event.altKey) return;[m
+[31m-[m
+[31m-    if (event.key === "ArrowLeft") {[m
+[31m-      event.preventDefault();[m
+[31m-      prevWord();[m
+[31m-      return;[m
+[31m-    }[m
+[31m-[m
+[31m-    if (event.key === "ArrowRight") {[m
+[31m-      event.preventDefault();[m
+[31m-      nextWord();[m
+[31m-      return;[m
+[31m-    }[m
+[31m-[m
+[31m-    if (event.key === " " || event.code === "Space") {[m
+[31m-      event.preventDefault();[m
+[31m-      speakWord();[m
+[31m-      return;[m
+[31m-    }[m
+[31m-[m
+[31m-    if (event.key.toLowerCase() === "f") {[m
+[31m-      event.preventDefault();[m
+[31m-      handleToggleFavoriteCurrentWord();[m
+[31m-      return;[m
+[31m-    }[m
+[31m-[m
+[31m-    if (event.key.toLowerCase() === "d") {[m
+[31m-      event.preventDefault();[m
+[31m-      handleToggleDifficultCurrentWord();[m
+[32m+[m[32m    if (isTextInputTarget(event.target)) {[m
+[32m+[m[32m      handleTextInputKeydown(event, handlers);[m
+       return;[m
+     }[m
+ [m
+[31m-    if (event.key === "+") {[m
+[31m-      event.preventDefault();[m
+[31m-      increaseReviewScore();[m
+[31m-      return;[m
+[31m-    }[m
+[31m-[m
+[31m-    if (event.key === "-" || event.key === "－") {[m
+[31m-      event.preventDefault();[m
+[31m-      decreaseReviewScore();[m
+[31m-      return;[m
+[31m-    }[m
+[32m+[m[32m    handleAppShortcutKeydown(event, handlers);[m
+[32m+[m[32m  });[m
+[32m+[m[32m}[m
+ [m
+[31m-    if (event.key === "0") {[m
+[31m-      event.preventDefault();[m
+[31m-      resetReviewScore();[m
+[31m-      return;[m
+[31m-    }[m
+[32m+[m[32mfunction isTextInputTarget(target) {[m
+[32m+[m[32m  return ([m
+[32m+[m[32m    target instanceof HTMLInputElement ||[m
+[32m+[m[32m    target instanceof HTMLTextAreaElement ||[m
+[32m+[m[32m    target instanceof HTMLSelectElement[m
+[32m+[m[32m  );[m
+[32m+[m[32m}[m
+ [m
+[31m-    if (event.key === "/") {[m
+[31m-      event.preventDefault();[m
+[31m-      focusSearch();[m
+[31m-      return;[m
+[31m-    }[m
+[32m+[m[32mfunction isModifiedShortcut(event) {[m
+[32m+[m[32m  return event.ctrlKey || event.metaKey || event.altKey;[m
+[32m+[m[32m}[m
+ [m
+[31m-    if (event.key === "Escape") {[m
+[31m-      event.preventDefault();[m
+[31m-      closeSidebar();[m
+[31m-      return;[m
+[31m-    }[m
+[32m+[m[32mfunction preventAndRun(event, callback) {[m
+[32m+[m[32m  event.preventDefault();[m
+[32m+[m[32m  callback();[m
+[32m+[m[32m}[m
+ [m
+[31m-    if (event.key.toLowerCase() === "l") {[m
+[31m-      event.preventDefault();[m
+[31m-      toggleSidebar();[m
+[31m-      return;[m
+[31m-    }[m
+[32m+[m[32mfunction handleTextInputKeydown(event, handlers) {[m
+[32m+[m[32m  if (event.key === "Escape") {[m
+[32m+[m[32m    preventAndRun(event, () => {[m
+[32m+[m[32m      if (!handlers.clearSearch()) event.target.blur();[m
+[32m+[m[32m    });[m
+[32m+[m[32m    return;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (event.key === "Enter") {[m
+[32m+[m[32m    preventAndRun(event, () => {[m
+[32m+[m[32m      if (event.shiftKey) {[m
+[32m+[m[32m        handlers.selectPreviousSearchResult();[m
+[32m+[m[32m      } else {[m
+[32m+[m[32m        handlers.selectNextSearchResult();[m
+[32m+[m[32m      }[m
+[32m+[m[32m    });[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+ [m
+[31m-    if (event.key.toLowerCase() === "r") {[m
+[31m-      event.preventDefault();[m
+[31m-      toggleRandomMode();[m
+[31m-    }[m
+[31m-  });[m
+[32m+[m[32mfunction handleAppShortcutKeydown(event, handlers) {[m
+[32m+[m[32m  if (isModifiedShortcut(event)) return;[m
+[32m+[m
+[32m+[m[32m  if (event.key === "ArrowLeft") {[m
+[32m+[m[32m    preventAndRun(event, handlers.prevWord);[m
+[32m+[m[32m    return;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (event.key === "ArrowRight") {[m
+[32m+[m[32m    preventAndRun(event, handlers.nextWord);[m
+[32m+[m[32m    return;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (event.key === " " || event.code === "Space") {[m
+[32m+[m[32m    preventAndRun(event, handlers.speakWord);[m
+[32m+[m[32m    return;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (event.key.toLowerCase() === "f") {[m
+[32m+[m[32m    preventAndRun(event, handlers.handleToggleFavoriteCurrentWord);[m
+[32m+[m[32m    return;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (event.key.toLowerCase() === "d") {[m
+[32m+[m[32m    preventAndRun(event, handlers.handleToggleDifficultCurrentWord);[m
+[32m+[m[32m    return;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (event.key === "+") {[m
+[32m+[m[32m    preventAndRun(event, handlers.increaseReviewScore);[m
+[32m+[m[32m    return;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (event.key === "-" || event.key === "－") {[m
+[32m+[m[32m    preventAndRun(event, handlers.decreaseReviewScore);[m
+[32m+[m[32m    return;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (event.key === "0") {[m
+[32m+[m[32m    preventAndRun(event, handlers.resetReviewScore);[m
+[32m+[m[32m    return;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (event.key === "/") {[m
+[32m+[m[32m    preventAndRun(event, handlers.focusSearch);[m
+[32m+[m[32m    return;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (event.key === "Escape") {[m
+[32m+[m[32m    preventAndRun(event, handlers.closeSidebar);[m
+[32m+[m[32m    return;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (event.key.toLowerCase() === "l") {[m
+[32m+[m[32m    preventAndRun(event, handlers.toggleSidebar);[m
+[32m+[m[32m    return;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (event.key.toLowerCase() === "r") {[m
+[32m+[m[32m    preventAndRun(event, handlers.toggleRandomMode);[m
+[32m+[m[32m  }[m
+ }[m
+ [m
+ export function bindTouchEvents({ prevWord, nextWord, isSwipeAllowedTarget }) {[m
+[1mdiff --git a/favorites.js b/favorites.js[m
+[1mindex e33aabf..0e993e3 100644[m
+[1m--- a/favorites.js[m
+[1m+++ b/favorites.js[m
+[36m@@ -1,4 +1,5 @@[m
+ import { doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";[m
+[32m+[m[32mimport { normalizeWordRecordMap } from "./wordIdentity.js";[m
+ [m
+ export async function loadFavoritesFromCloudRemote(db, collectionName, userUid) {[m
+   try {[m
+[36m@@ -38,11 +39,11 @@[m [mexport async function saveDifficultsToCloudRemote(db, collectionName, userUid, d[m
+ }[m
+ [m
+ export function normalizeFavoritesPayload(data) {[m
+[31m-  return data?.favorites && typeof data.favorites === "object" ? data.favorites : {};[m
+[32m+[m[32m  return normalizeWordRecordMap(data?.favorites);[m
+ }[m
+ [m
+ export function normalizeDifficultsPayload(data) {[m
+[31m-  return data?.difficults && typeof data.difficults === "object" ? data.difficults : {};[m
+[32m+[m[32m  return normalizeWordRecordMap(data?.difficults);[m
+ }[m
+ [m
+ export function getFavoritesUpdatedAt(data) {[m
+[1mdiff --git a/favoritesManager.js b/favoritesManager.js[m
+[1mindex 0127271..07a3381 100644[m
+[1m--- a/favoritesManager.js[m
+[1m+++ b/favoritesManager.js[m
+[36m@@ -1,5 +1,8 @@[m
+[31m-export function makeFavoriteKey(item) {[m
+[31m-  return item.id;[m
+[32m+[m[32mimport { makeWordKey } from "./wordIdentity.js";[m
+[32m+[m[32mimport { buildMarkedWordEntries, clampIndex } from "./wordList.js";[m
+[32m+[m
+[32m+[m[32mfunction makeFavoriteKey(item) {[m
+[32m+[m[32m  return makeWordKey(item);[m
+ }[m
+ [m
+ export function isFavorite(favorites, item) {[m
+[36m@@ -7,31 +10,32 @@[m [mexport function isFavorite(favorites, item) {[m
+ }[m
+ [m
+ export function buildFavoriteEntries(allWordsByVol, volOrder, favorites) {[m
+[31m-  const entries = [];[m
+[31m-[m
+[31m-  volOrder.forEach((vol) => {[m
+[31m-    (allWordsByVol[vol] || []).forEach((item) => {[m
+[31m-      if (isFavorite(favorites, item)) {[m
+[31m-        entries.push(item);[m
+[31m-      }[m
+[31m-    });[m
+[31m-  });[m
+[32m+[m[32m  return buildMarkedWordEntries(allWordsByVol, volOrder, favorites, isFavorite);[m
+[32m+[m[32m}[m
+ [m
+[31m-  return entries;[m
+[32m+[m[32mfunction createFavoritesResult(state, updated = {}) {[m
+[32m+[m[32m  return {[m
+[32m+[m[32m    ...updated,[m
+[32m+[m[32m    currentMode: state.currentMode,[m
+[32m+[m[32m    index: state.index,[m
+[32m+[m[32m    indexByVol: state.indexByVol,[m
+[32m+[m[32m    randomMode: state.randomMode,[m
+[32m+[m[32m    frequencyMode: state.frequencyMode[m
+[32m+[m[32m  };[m
+ }[m
+ [m
+[31m-export function touchFavoritesChanged([m
+[32m+[m[32mfunction touchFavoritesChanged([m
+   state,[m
+   saveFavoritesToLocalOnly,[m
+   saveFavoritesUpdatedAt,[m
+[31m-  clearAllShuffleCache,[m
+[32m+[m[32m  clearWordOrderCache,[m
+   requestListRebuild[m
+ ) {[m
+   state.favoritesUpdatedAt = Date.now();[m
+   state.favoritesVersion = (Number(state.favoritesVersion) || 0) + 1;[m
+   saveFavoritesToLocalOnly(state.favorites);[m
+   saveFavoritesUpdatedAt(state.favoritesUpdatedAt);[m
+[31m-  clearAllShuffleCache();[m
+[32m+[m[32m  clearWordOrderCache();[m
+   requestListRebuild();[m
+   return {[m
+     favoritesUpdatedAt: state.favoritesUpdatedAt,[m
+[36m@@ -39,23 +43,45 @@[m [mexport function touchFavoritesChanged([m
+   };[m
+ }[m
+ [m
+[32m+[m[32mfunction toggleFavoriteRecord(favorites, key) {[m
+[32m+[m[32m  if (favorites[key]) {[m
+[32m+[m[32m    delete favorites[key];[m
+[32m+[m[32m  } else {[m
+[32m+[m[32m    favorites[key] = { addedAt: Date.now() };[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction saveCurrentFavoriteIndex(state, callbacks, currentId) {[m
+[32m+[m[32m  callbacks.applyWordOrder(false);[m
+[32m+[m
+[32m+[m[32m  const currentWords = callbacks.getWords();[m
+[32m+[m[32m  const nextIndex = currentWords.findIndex((item) => item.id === currentId);[m
+[32m+[m[32m  state.index = nextIndex >= 0 ? nextIndex : clampIndex(state.index, currentWords);[m
+[32m+[m
+[32m+[m[32m  if (currentWords.length > 0) {[m
+[32m+[m[32m    state.indexByVol.favorites = state.index;[m
+[32m+[m[32m    callbacks.saveIndexByVol(state.indexByVol);[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction finishFavoriteToggle(state, callbacks, updated) {[m
+[32m+[m[32m  callbacks.render();[m
+[32m+[m[32m  callbacks.updateFavoriteToggleButton();[m
+[32m+[m[32m  return createFavoritesResult(state, updated);[m
+[32m+[m[32m}[m
+[32m+[m
+ export function toggleFavoriteCurrentWord(state, callbacks) {[m
+   const current = callbacks.getCurrentWord();[m
+   if (!current) return null;[m
+ [m
+   const key = makeFavoriteKey(current);[m
+[31m-[m
+[31m-  if (state.favorites[key]) {[m
+[31m-    delete state.favorites[key];[m
+[31m-  } else {[m
+[31m-    state.favorites[key] = { addedAt: Date.now() };[m
+[31m-  }[m
+[32m+[m[32m  toggleFavoriteRecord(state.favorites, key);[m
+ [m
+   const updated = touchFavoritesChanged([m
+     state,[m
+     callbacks.saveFavoritesToLocalOnly,[m
+     callbacks.saveFavoritesUpdatedAt,[m
+[31m-    callbacks.clearAllShuffleCache,[m
+[32m+[m[32m    callbacks.clearWordOrderCache,[m
+     callbacks.requestListRebuild[m
+   );[m
+ [m
+[36m@@ -66,98 +92,64 @@[m [mexport function toggleFavoriteCurrentWord(state, callbacks) {[m
+   }[m
+ [m
+   if (state.currentMode === "favorites") {[m
+[31m-    const currentId = current.id;[m
+[31m-    callbacks.applyWordOrder(false);[m
+[31m-[m
+[31m-    const currentWords = callbacks.getWords();[m
+[31m-    const nextIndex = currentWords.findIndex((item) => item.id === currentId);[m
+[31m-    state.index = nextIndex >= 0 ? nextIndex : Math.min(state.index, Math.max(currentWords.length - 1, 0));[m
+[31m-[m
+[31m-    if (currentWords.length === 0) {[m
+[31m-      state.index = 0;[m
+[31m-      callbacks.requestListRebuild();[m
+[31m-      callbacks.render();[m
+[31m-      callbacks.updateFavoriteToggleButton();[m
+[31m-      return {[m
+[31m-        ...updated,[m
+[31m-        index: state.index,[m
+[31m-        indexByVol: state.indexByVol[m
+[31m-      };[m
+[31m-    }[m
+[31m-[m
+[31m-    state.indexByVol.favorites = state.index;[m
+[31m-    callbacks.saveIndexByVol(state.indexByVol);[m
+[31m-    callbacks.requestListRebuild();[m
+[32m+[m[32m    saveCurrentFavoriteIndex(state, callbacks, current.id);[m
+   }[m
+ [m
+[32m+[m[32m  return finishFavoriteToggle(state, callbacks, updated);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction hasFavoriteRecords(favorites) {[m
+[32m+[m[32m  return Object.keys(favorites || {}).length > 0;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction finishEmptyFavoritesMode(state, callbacks) {[m
+[32m+[m[32m  callbacks.applyWordOrder(true);[m
+[32m+[m[32m  state.index = 0;[m
+[32m+[m[32m  callbacks.requestListRebuild();[m
+   callbacks.render();[m
+   callbacks.updateFavoriteToggleButton();[m
+[31m-  return {[m
+[31m-    ...updated,[m
+[31m-    index: state.index,[m
+[31m-    indexByVol: state.indexByVol[m
+[31m-  };[m
+[32m+[m[32m  return createFavoritesResult(state);[m
+ }[m
+ [m
+[31m-export async function loadFavoritesMode(state, callbacks, volOrder) {[m
+[32m+[m[32mfunction setFavoritesMode(state, callbacks) {[m
+   callbacks.setCurrentMode("favorites");[m
+   state.currentMode = "favorites";[m
+   callbacks.saveCurrentModeState("favorites");[m
+   callbacks.clearNavigationHistory();[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction chooseFavoriteIndex(state, callbacks) {[m
+[32m+[m[32m  const currentWords = callbacks.getWords();[m
+[32m+[m[32m  const fallbackIndex = clampIndex(state.indexByVol.favorites || 0, currentWords);[m
+[32m+[m[32m  const current = callbacks.getCurrentWord ? callbacks.getCurrentWord() : null;[m
+[32m+[m
+[32m+[m[32m  if (!current || !isFavorite(state.favorites, current)) {[m
+[32m+[m[32m    state.index = fallbackIndex;[m
+[32m+[m[32m    return;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  const favoriteIndex = currentWords.findIndex((item) => item.id === current.id);[m
+[32m+[m[32m  state.index = favoriteIndex >= 0 ? favoriteIndex : fallbackIndex;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mexport async function loadFavoritesMode(state, callbacks, volOrder) {[m
+[32m+[m[32m  setFavoritesMode(state, callbacks);[m
+ [m
+[31m-  const hasFavorites = Object.keys(state.favorites || {}).length > 0;[m
+[31m-  if (!hasFavorites) {[m
+[31m-    callbacks.applyWordOrder(true);[m
+[31m-    state.index = 0;[m
+[31m-    callbacks.requestListRebuild();[m
+[31m-    callbacks.render();[m
+[31m-    callbacks.updateFavoriteToggleButton();[m
+[31m-    return {[m
+[31m-      currentMode: state.currentMode,[m
+[31m-      index: state.index,[m
+[31m-      randomMode: state.randomMode,[m
+[31m-      frequencyMode: state.frequencyMode[m
+[31m-    };[m
+[32m+[m[32m  if (!hasFavoriteRecords(state.favorites)) {[m
+[32m+[m[32m    return finishEmptyFavoritesMode(state, callbacks);[m
+   }[m
+ [m
+   await callbacks.ensureAllVolumesLoaded();[m
+   const favoriteEntries = buildFavoriteEntries(state.allWordsByVol, volOrder, state.favorites);[m
+ [m
+   if (favoriteEntries.length === 0) {[m
+[31m-    callbacks.applyWordOrder(true);[m
+[31m-    state.index = 0;[m
+[31m-    callbacks.requestListRebuild();[m
+[31m-    callbacks.render();[m
+[31m-    callbacks.updateFavoriteToggleButton();[m
+[31m-    return {[m
+[31m-      currentMode: state.currentMode,[m
+[31m-      index: state.index,[m
+[31m-      randomMode: state.randomMode,[m
+[31m-      frequencyMode: state.frequencyMode[m
+[31m-    };[m
+[32m+[m[32m    return finishEmptyFavoritesMode(state, callbacks);[m
+   }[m
+ [m
+   callbacks.applyWordOrder(false);[m
+[31m-  const currentWords = callbacks.getWords();[m
+[31m-[m
+[31m-  const current = callbacks.getCurrentWord ? callbacks.getCurrentWord() : null;[m
+[31m-  if (current && state.favorites[makeFavoriteKey(current)]) {[m
+[31m-    const favoriteIndex = currentWords.findIndex((item) => item.id === current.id);[m
+[31m-    if (favoriteIndex >= 0) {[m
+[31m-      state.index = favoriteIndex;[m
+[31m-    } else {[m
+[31m-      state.index = Math.min(state.indexByVol.favorites || 0, Math.max(currentWords.length - 1, 0));[m
+[31m-    }[m
+[31m-  } else {[m
+[31m-    state.index = Math.min(state.indexByVol.favorites || 0, Math.max(currentWords.length - 1, 0));[m
+[31m-  }[m
+[32m+[m[32m  chooseFavoriteIndex(state, callbacks);[m
+ [m
+   callbacks.requestListRebuild();[m
+   callbacks.render();[m
+[31m-  return {[m
+[31m-    currentMode: state.currentMode,[m
+[31m-    index: state.index,[m
+[31m-    randomMode: state.randomMode,[m
+[31m-    frequencyMode: state.frequencyMode[m
+[31m-  };[m
+[32m+[m[32m  return createFavoritesResult(state);[m
+ }[m
+[1mdiff --git a/pronunciation.js b/pronunciation.js[m
+[1mindex aeb166e..060c570 100644[m
+[1m--- a/pronunciation.js[m
+[1m+++ b/pronunciation.js[m
+[36m@@ -1,4 +1,4 @@[m
+[31m-﻿import { normalizeWord } from './data.js';[m
+[32m+[m[32mimport { normalizeWordKey } from './wordIdentity.js';[m
+ import { safeGetItem, safeSetItem } from './storage.js';[m
+ [m
+ let pronunciationEl = null;[m
+[36m@@ -12,7 +12,7 @@[m [mexport function initPronunciation({ el, getCurrentWord }) {[m
+ }[m
+ [m
+ export function updateSpeechButtonAvailability(speakBtnEl) {[m
+[31m-  const supported = typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;[m
+[32m+[m[32m  const supported = isSpeechSynthesisSupported();[m
+   if (!speakBtnEl) return;[m
+ [m
+   speakBtnEl.disabled = !supported;[m
+[36m@@ -24,7 +24,7 @@[m [mexport function speakWord() {[m
+   if (!getCurrentWordFn) return;[m
+   const current = getCurrentWordFn();[m
+   if (!current) return;[m
+[31m-  if (typeof window === 'undefined' || !('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) return;[m
+[32m+[m[32m  if (!isSpeechSynthesisSupported()) return;[m
+ [m
+   window.speechSynthesis.cancel();[m
+   const utterance = new SpeechSynthesisUtterance(current.word);[m
+[36m@@ -37,7 +37,7 @@[m [mexport function speakWord() {[m
+ export async function loadPronunciation(word) {[m
+   if (!pronunciationEl) return;[m
+ [m
+[31m-  const normalizedWord = normalizeWord(word);[m
+[32m+[m[32m  const normalizedWord = normalizeWordKey(word);[m
+   const key = `portfolio_pron_${normalizedWord}`;[m
+   lastPronunciationRequest = normalizedWord;[m
+ [m
+[36m@@ -55,39 +55,62 @@[m [mexport async function loadPronunciation(word) {[m
+   pronunciationEl.textContent = '…';[m
+ [m
+   try {[m
+[31m-    const response = await fetch([m
+[31m-      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,[m
+[31m-      { signal: currentPronunciationController.signal }[m
+[31m-    );[m
+[31m-    const data = await response.json();[m
+[31m-[m
+[31m-    let phonetic = '';[m
+[31m-    if (Array.isArray(data) && data[0]) {[m
+[31m-      if (data[0].phonetic) {[m
+[31m-        phonetic = data[0].phonetic;[m
+[31m-      } else if (Array.isArray(data[0].phonetics)) {[m
+[31m-        const found = data[0].phonetics.find((item) => item && item.text);[m
+[31m-        phonetic = found ? found.text : '';[m
+[31m-      }[m
+[31m-    }[m
+[31m-[m
+[31m-    phonetic = phonetic.replace(/^\/|\/$/g, '');[m
+[32m+[m[32m    const data = await fetchPronunciationData(word, currentPronunciationController.signal);[m
+[32m+[m[32m    const phonetic = extractPhonetic(data);[m
+     if (phonetic) {[m
+       safeSetItem(key, phonetic);[m
+     }[m
+ [m
+[31m-    const current = getCurrentWordFn ? getCurrentWordFn() : null;[m
+[31m-    const currentWord = current ? normalizeWord(current.word) : '';[m
+[31m-    if (lastPronunciationRequest === normalizedWord && currentWord === normalizedWord) {[m
+[32m+[m[32m    if (isCurrentPronunciationRequest(normalizedWord)) {[m
+       pronunciationEl.textContent = phonetic || '発音記号なし';[m
+     }[m
+   } catch (error) {[m
+     if (error.name !== 'AbortError') {[m
+[31m-      const current = getCurrentWordFn ? getCurrentWordFn() : null;[m
+[31m-      const currentWord = current ? normalizeWord(current.word) : '';[m
+[31m-      if (lastPronunciationRequest === normalizedWord && currentWord === normalizedWord) {[m
+[32m+[m[32m      if (isCurrentPronunciationRequest(normalizedWord)) {[m
+         pronunciationEl.textContent = '発音記号なし';[m
+       }[m
+     }[m
+   }[m
+ }[m
+[32m+[m
+[32m+[m[32masync function fetchPronunciationData(word, signal) {[m
+[32m+[m[32m  const response = await fetch([m
+[32m+[m[32m    `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,[m
+[32m+[m[32m    { signal }[m
+[32m+[m[32m  );[m
+[32m+[m
+[32m+[m[32m  if (response.ok === false) {[m
+[32m+[m[32m    return null;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  return response.json();[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction isSpeechSynthesisSupported() {[m
+[32m+[m[32m  return ([m
+[32m+[m[32m    typeof window !== 'undefined' &&[m
+[32m+[m[32m    'speechSynthesis' in window &&[m
+[32m+[m[32m    'SpeechSynthesisUtterance' in window[m
+[32m+[m[32m  );[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction extractPhonetic(data) {[m
+[32m+[m[32m  if (!Array.isArray(data) || !data[0]) return '';[m
+[32m+[m
+[32m+[m[32m  const entry = data[0];[m
+[32m+[m[32m  const phonetic = entry.phonetic || findPhoneticText(entry.phonetics);[m
+[32m+[m[32m  return phonetic.replace(/^\/|\/$/g, '');[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction findPhoneticText(phonetics) {[m
+[32m+[m[32m  if (!Array.isArray(phonetics)) return '';[m
+[32m+[m
+[32m+[m[32m  const found = phonetics.find((item) => item && item.text);[m
+[32m+[m[32m  return found ? found.text : '';[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction isCurrentPronunciationRequest(normalizedWord) {[m
+[32m+[m[32m  const current = getCurrentWordFn ? getCurrentWordFn() : null;[m
+[32m+[m[32m  const currentWord = current ? normalizeWordKey(current.word) : '';[m
+[32m+[m[32m  return lastPronunciationRequest === normalizedWord && currentWord === normalizedWord;[m
+[32m+[m[32m}[m
+[1mdiff --git a/reviewManager.js b/reviewManager.js[m
+[1mindex 613f8a1..7d1c9e2 100644[m
+[1m--- a/reviewManager.js[m
+[1m+++ b/reviewManager.js[m
+[36m@@ -1,5 +1,29 @@[m
+[31m-export function makeReviewKey(item) {[m
+[31m-  return item.id;[m
+[32m+[m[32mimport { makeWordKey } from "./wordIdentity.js";[m
+[32m+[m
+[32m+[m[32mconst MIN_REVIEW_SCORE = -5;[m
+[32m+[m[32mconst MAX_REVIEW_SCORE = 5;[m
+[32m+[m
+[32m+[m[32mfunction makeReviewKey(item) {[m
+[32m+[m[32m  return makeWordKey(item);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction clampReviewScore(score) {[m
+[32m+[m[32m  return Math.max(MIN_REVIEW_SCORE, Math.min(MAX_REVIEW_SCORE, score));[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction createReviewSortEntry(item, originalIndex, getScore, randomizeTies) {[m
+[32m+[m[32m  return {[m
+[32m+[m[32m    item,[m
+[32m+[m[32m    originalIndex,[m
+[32m+[m[32m    score: getScore(item),[m
+[32m+[m[32m    tieRank: randomizeTies ? Math.random() : 0[m
+[32m+[m[32m  };[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction compareReviewSortEntries(a, b) {[m
+[32m+[m[32m  if (b.score !== a.score) return b.score - a.score;[m
+[32m+[m[32m  if (a.tieRank !== b.tieRank) return a.tieRank - b.tieRank;[m
+[32m+[m[32m  return a.originalIndex - b.originalIndex;[m
+ }[m
+ [m
+ export function getReviewScore(reviewScores, item) {[m
+[36m@@ -9,7 +33,7 @@[m [mexport function getReviewScore(reviewScores, item) {[m
+ export function updateReviewScore(reviewScores, item, delta) {[m
+   const key = makeReviewKey(item);[m
+   const currentScore = getReviewScore(reviewScores, item);[m
+[31m-  const nextScore = Math.max(-5, Math.min(5, currentScore + delta));[m
+[32m+[m[32m  const nextScore = clampReviewScore(currentScore + delta);[m
+ [m
+   if (nextScore === 0) {[m
+     delete reviewScores[key];[m
+[36m@@ -23,27 +47,16 @@[m [mexport function updateReviewScore(reviewScores, item, delta) {[m
+   return nextScore;[m
+ }[m
+ [m
+[31m-[m
+ export function resetReviewScore(reviewScores, item) {[m
+   delete reviewScores[makeReviewKey(item)];[m
+   return 0;[m
+ }[m
+ [m
+[31m-[m
+ export function sortByReviewScore(words, getScore, options = {}) {[m
+   const randomizeTies = Boolean(options.randomizeTies);[m
+ [m
+   return [...words][m
+[31m-    .map((item, originalIndex) => ({[m
+[31m-      item,[m
+[31m-      originalIndex,[m
+[31m-      score: getScore(item),[m
+[31m-      tieRank: randomizeTies ? Math.random() : 0[m
+[31m-    }))[m
+[31m-    .sort((a, b) => {[m
+[31m-      if (b.score !== a.score) return b.score - a.score;[m
+[31m-      if (a.tieRank !== b.tieRank) return a.tieRank - b.tieRank;[m
+[31m-      return a.originalIndex - b.originalIndex;[m
+[31m-    })[m
+[32m+[m[32m    .map((item, originalIndex) => createReviewSortEntry(item, originalIndex, getScore, randomizeTies))[m
+[32m+[m[32m    .sort(compareReviewSortEntries)[m
+     .map(({ item }) => item);[m
+[31m-}[m
+\ No newline at end of file[m
+[32m+[m[32m}[m
+[1mdiff --git a/scripts/checkHeaders.js b/scripts/checkHeaders.js[m
+[1mindex 0d888ea..c1a4836 100644[m
+[1m--- a/scripts/checkHeaders.js[m
+[1m+++ b/scripts/checkHeaders.js[m
+[36m@@ -1,12 +1,13 @@[m
+[31m-(async ()=>{[m
+[32m+[m[32mimport { SHEET_URL } from "../data.js";[m
+[32m+[m
+[32m+[m[32m(async () => {[m
+   try {[m
+[31m-    const url = "https://docs.google.com/spreadsheets/d/17XhRsbdw5NfgGPsmkam8_B1F2mtlGMJ3Uh00l5UIIMY/export?format=csv&gid=0";[m
+[31m-    const res = await fetch(url);[m
+[31m-    console.log('STATUS', res.status);[m
+[31m-    for (const [k,v] of res.headers) {[m
+[31m-      console.log(k+':', v);[m
+[32m+[m[32m    const res = await fetch(SHEET_URL);[m
+[32m+[m[32m    console.log("STATUS", res.status);[m
+[32m+[m[32m    for (const [key, value] of res.headers) {[m
+[32m+[m[32m      console.log(`${key}: ${value}`);[m
+     }[m
+[31m-  } catch (e) {[m
+[31m-    console.error('ERROR', e && e.message ? e.message : e);[m
+[32m+[m[32m  } catch (error) {[m
+[32m+[m[32m    console.error("ERROR", error && error.message ? error.message : error);[m
+   }[m
+ })();[m
+[1mdiff --git a/scripts/fetchCsv.js b/scripts/fetchCsv.js[m
+[1mindex 123eab1..0e08c56 100644[m
+[1m--- a/scripts/fetchCsv.js[m
+[1m+++ b/scripts/fetchCsv.js[m
+[36m@@ -1,12 +1,13 @@[m
+[31m-(async ()=>{[m
+[32m+[m[32mimport { SHEET_URL } from "../data.js";[m
+[32m+[m
+[32m+[m[32m(async () => {[m
+   try {[m
+[31m-    const url = "https://docs.google.com/spreadsheets/d/17XhRsbdw5NfgGPsmkam8_B1F2mtlGMJ3Uh00l5UIIMY/export?format=csv&gid=0";[m
+[31m-    const res = await fetch(url);[m
+[31m-    console.log('STATUS', res.status);[m
+[31m-    const txt = await res.text();[m
+[31m-    console.log('LENGTH', txt.length);[m
+[31m-    console.log('HEAD:\n', txt.slice(0,1000));[m
+[31m-  } catch (e) {[m
+[31m-    console.error('ERROR', e && e.message ? e.message : e);[m
+[32m+[m[32m    const res = await fetch(SHEET_URL);[m
+[32m+[m[32m    console.log("STATUS", res.status);[m
+[32m+[m[32m    const text = await res.text();[m
+[32m+[m[32m    console.log("LENGTH", text.length);[m
+[32m+[m[32m    console.log("HEAD:\n", text.slice(0, 1000));[m
+[32m+[m[32m  } catch (error) {[m
+[32m+[m[32m    console.error("ERROR", error && error.message ? error.message : error);[m
+   }[m
+ })();[m
+[1mdiff --git a/test/data.test.js b/test/data.test.js[m
+[1mindex 9823d43..dcb86ca 100644[m
+[1m--- a/test/data.test.js[m
+[1m+++ b/test/data.test.js[m
+[36m@@ -1,5 +1,5 @@[m
+ import assert from "assert";[m
+[31m-import { parseCsv, parseCsvToWords } from "../data.js";[m
+[32m+[m[32mimport { parseCsv, parseCsvToWords, parseCsvToWordsByVol } from "../data.js";[m
+ [m
+ const sampleCsv = `\ufeffword,meaning\r\nhello,こんにちは\r\n"good,bye","さようなら"\r\n"quote""test",テスト\r\n`;[m
+ [m
+[36m@@ -13,25 +13,44 @@[m [mconst expectedRows = [[m
+ const parsedRows = parseCsv(sampleCsv);[m
+ assert.deepStrictEqual(parsedRows, expectedRows, "parseCsv should correctly parse quoted CSV rows and normalize line endings");[m
+ [m
+[31m-const parsedWords = parseCsvToWords(sampleCsv, "vol1");[m
+[31m-assert.strictEqual(parsedWords.length, 3, "parseCsvToWords should skip header rows and return only data rows");[m
+[31m-assert.deepStrictEqual(parsedWords[0], {[m
+[31m-  id: "vol1-2-hello",[m
+[31m-  word: "hello",[m
+[31m-  meaning: "こんにちは",[m
+[31m-  sourceVol: "vol1"[m
+[31m-});[m
+[31m-assert.deepStrictEqual(parsedWords[1], {[m
+[31m-  id: "vol1-3-good,bye",[m
+[31m-  word: "good,bye",[m
+[31m-  meaning: "さようなら",[m
+[31m-  sourceVol: "vol1"[m
+[31m-});[m
+[31m-assert.deepStrictEqual(parsedWords[2], {[m
+[31m-  id: "vol1-4-quote\"test",[m
+[31m-  word: "quote\"test",[m
+[31m-  meaning: "テスト",[m
+[31m-  sourceVol: "vol1"[m
+[31m-});[m
+[32m+[m[32mconst leveledCsv = `word,meaning,level\r\ncreate,作る,1\r\nimprove,改善する,2\r\npractice,練習する,2\r\nmemory,記憶,3\r\nefficient,効率的な,4\r\nunknown,未分類,5\r\n`;[m
+[32m+[m
+[32m+[m[32mconst parsedWordsByVol = parseCsvToWordsByVol(leveledCsv);[m
+[32m+[m[32massert.deepStrictEqual([m
+[32m+[m[32m  Object.fromEntries(Object.entries(parsedWordsByVol).map(([volName, words]) => [volName, words.map((item) => item.word)])),[m
+[32m+[m[32m  {[m
+[32m+[m[32m    vol1: ["create"],[m
+[32m+[m[32m    vol2: ["improve", "practice"],[m
+[32m+[m[32m    vol3: ["memory"],[m
+[32m+[m[32m    vol4: ["efficient"][m
+[32m+[m[32m  },[m
+[32m+[m[32m  "parseCsvToWordsByVol should group one sheet by level and skip unknown levels"[m
+[32m+[m[32m);[m
+[32m+[m
+[32m+[m[32mconst parsedLevelOneWords = parseCsvToWords(leveledCsv, "vol1");[m
+[32m+[m[32massert.deepStrictEqual(parsedLevelOneWords, [[m
+[32m+[m[32m  {[m
+[32m+[m[32m    id: "create",[m
+[32m+[m[32m    word: "create",[m
+[32m+[m[32m    meaning: "作る",[m
+[32m+[m[32m    sourceVol: "vol1"[m
+[32m+[m[32m  }[m
+[32m+[m[32m]);[m
+[32m+[m
+[32m+[m[32mconst parsedLevelTwoWords = parseCsvToWords(leveledCsv, "vol2");[m
+[32m+[m[32massert.deepStrictEqual(parsedLevelTwoWords, [[m
+[32m+[m[32m  {[m
+[32m+[m[32m    id: "improve",[m
+[32m+[m[32m    word: "improve",[m
+[32m+[m[32m    meaning: "改善する",[m
+[32m+[m[32m    sourceVol: "vol2"[m
+[32m+[m[32m  },[m
+[32m+[m[32m  {[m
+[32m+[m[32m    id: "practice",[m
+[32m+[m[32m    word: "practice",[m
+[32m+[m[32m    meaning: "練習する",[m
+[32m+[m[32m    sourceVol: "vol2"[m
+[32m+[m[32m  }[m
+[32m+[m[32m]);[m
+ [m
+ console.log("All data parser tests passed.");[m
+[1mdiff --git a/test/difficultsManager.test.js b/test/difficultsManager.test.js[m
+[1mindex 9344894..b1efa6e 100644[m
+[1m--- a/test/difficultsManager.test.js[m
+[1m+++ b/test/difficultsManager.test.js[m
+[36m@@ -8,21 +8,22 @@[m [mimport {[m
+ [m
+ const wordsByVol = {[m
+   vol1: [[m
+[31m-    { id: "vol1-1-alpha", word: "alpha", sourceVol: "vol1" },[m
+[31m-    { id: "vol1-2-beta", word: "beta", sourceVol: "vol1" }[m
+[32m+[m[32m    { id: "alpha", word: "alpha", sourceVol: "vol1" },[m
+[32m+[m[32m    { id: "beta", word: "beta", sourceVol: "vol1" }[m
+   ],[m
+   vol2: [[m
+[31m-    { id: "vol2-1-gamma", word: "gamma", sourceVol: "vol2" }[m
+[32m+[m[32m    { id: "gamma", word: "gamma", sourceVol: "vol2" }[m
+   ][m
+ };[m
+ [m
+ const difficults = {[m
+[31m-  "vol1-2-beta": { addedAt: 1 },[m
+[31m-  "vol2-1-gamma": { addedAt: 2 }[m
+[32m+[m[32m  beta: { addedAt: 1 },[m
+[32m+[m[32m  gamma: { addedAt: 2 }[m
+ };[m
+ [m
+ assert.strictEqual(isDifficult(difficults, wordsByVol.vol1[1]), true);[m
+ assert.strictEqual(isDifficult(difficults, wordsByVol.vol1[0]), false);[m
+[32m+[m
+ assert.deepStrictEqual([m
+   buildDifficultEntries(wordsByVol, ["vol1", "vol2"], difficults).map((item) => item.word),[m
+   ["beta", "gamma"][m
+[36m@@ -48,7 +49,7 @@[m [mconst callbacks = {[m
+   getWords: () => state.words,[m
+   saveDifficultsToLocalOnly: (value) => { savedDifficults = { ...value }; },[m
+   saveDifficultsUpdatedAt: (value) => { savedDifficultsUpdatedAt = value; },[m
+[31m-  clearAllShuffleCache: () => {},[m
+[32m+[m[32m  clearWordOrderCache: () => {},[m
+   requestListRebuild: () => {},[m
+   updateDifficultToggleButton: () => {},[m
+   saveDifficultsToCloud: () => { cloudSaves += 1; },[m
+[36m@@ -58,7 +59,7 @@[m [mconst callbacks = {[m
+ };[m
+ [m
+ const result = toggleDifficultCurrentWord(state, callbacks);[m
+[31m-assert.strictEqual(Boolean(savedDifficults["vol1-1-alpha"]), true);[m
+[32m+[m[32massert.strictEqual(Boolean(savedDifficults.alpha), true);[m
+ assert.strictEqual(typeof savedDifficultsUpdatedAt, "number");[m
+ assert.strictEqual(cloudSaves, 1);[m
+ assert.strictEqual(result.difficultsVersion, 1);[m
+[36m@@ -109,4 +110,35 @@[m [massert.strictEqual(modeApplyCalls, 1);[m
+ assert.strictEqual(modeRendered, 1);[m
+ assert.strictEqual(modeListRebuilds, 1);[m
+ [m
+[32m+[m[32mconst emptyModeState = {[m
+[32m+[m[32m  allWordsByVol: {},[m
+[32m+[m[32m  currentMode: "vol",[m
+[32m+[m[32m  indexByVol: { difficults: 0 },[m
+[32m+[m[32m  difficults: {},[m
+[32m+[m[32m  words: [],[m
+[32m+[m[32m  randomMode: false,[m
+[32m+[m[32m  frequencyMode: false[m
+[32m+[m[32m};[m
+[32m+[m[32mlet emptyModeRendered = 0;[m
+[32m+[m[32mlet emptyModeListRebuilds = 0;[m
+[32m+[m[32mconst emptyModeResult = await loadDifficultsMode([m
+[32m+[m[32m  emptyModeState,[m
+[32m+[m[32m  {[m
+[32m+[m[32m    ensureAllVolumesLoaded: async () => { throw new Error("empty difficults should not load volumes"); },[m
+[32m+[m[32m    setCurrentMode: (mode) => { emptyModeState.currentMode = mode; },[m
+[32m+[m[32m    saveCurrentModeState: () => {},[m
+[32m+[m[32m    clearNavigationHistory: () => {},[m
+[32m+[m[32m    applyWordOrder: () => { emptyModeState.words = []; },[m
+[32m+[m[32m    getWords: () => emptyModeState.words,[m
+[32m+[m[32m    requestListRebuild: () => { emptyModeListRebuilds += 1; },[m
+[32m+[m[32m    render: () => { emptyModeRendered += 1; },[m
+[32m+[m[32m    updateDifficultToggleButton: () => {}[m
+[32m+[m[32m  },[m
+[32m+[m[32m  ["vol1", "vol2"][m
+[32m+[m[32m);[m
+[32m+[m[32massert.strictEqual(emptyModeResult.currentMode, "difficults");[m
+[32m+[m[32massert.strictEqual(emptyModeResult.index, 0);[m
+[32m+[m[32massert.strictEqual(emptyModeRendered, 1);[m
+[32m+[m[32massert.strictEqual(emptyModeListRebuilds, 1);[m
+[32m+[m
+ console.log("All difficult word tests passed.");[m
+[1mdiff --git a/test/favoritesManager.test.js b/test/favoritesManager.test.js[m
+[1mindex 08d31ea..a63d4c2 100644[m
+[1m--- a/test/favoritesManager.test.js[m
+[1m+++ b/test/favoritesManager.test.js[m
+[36m@@ -2,26 +2,28 @@[m [mimport assert from "assert";[m
+ import {[m
+   buildFavoriteEntries,[m
+   isFavorite,[m
+[31m-  loadFavoritesMode[m
+[32m+[m[32m  loadFavoritesMode,[m
+[32m+[m[32m  toggleFavoriteCurrentWord[m
+ } from "../favoritesManager.js";[m
+ [m
+ const wordsByVol = {[m
+   vol1: [[m
+[31m-    { id: "vol1-1-alpha", word: "alpha", sourceVol: "vol1" },[m
+[31m-    { id: "vol1-2-beta", word: "beta", sourceVol: "vol1" }[m
+[32m+[m[32m    { id: "alpha", word: "alpha", sourceVol: "vol1" },[m
+[32m+[m[32m    { id: "beta", word: "beta", sourceVol: "vol1" }[m
+   ],[m
+   vol2: [[m
+[31m-    { id: "vol2-1-gamma", word: "gamma", sourceVol: "vol2" }[m
+[32m+[m[32m    { id: "gamma", word: "gamma", sourceVol: "vol2" }[m
+   ][m
+ };[m
+ [m
+ const favorites = {[m
+[31m-  "vol1-2-beta": { addedAt: 1 },[m
+[31m-  "vol2-1-gamma": { addedAt: 2 }[m
+[32m+[m[32m  beta: { addedAt: 1 },[m
+[32m+[m[32m  gamma: { addedAt: 2 }[m
+ };[m
+ [m
+ assert.strictEqual(isFavorite(favorites, wordsByVol.vol1[1]), true);[m
+ assert.strictEqual(isFavorite(favorites, wordsByVol.vol1[0]), false);[m
+[32m+[m
+ assert.deepStrictEqual([m
+   buildFavoriteEntries(wordsByVol, ["vol1", "vol2"], favorites).map((item) => item.word),[m
+   ["beta", "gamma"][m
+[36m@@ -107,4 +109,35 @@[m [massert.strictEqual(emptyResult.currentMode, "favorites");[m
+ assert.strictEqual(emptyResult.index, 0);[m
+ assert.strictEqual(emptyRendered, 1);[m
+ assert.strictEqual(emptyListRebuilds, 1);[m
+[31m-console.log("All favorite word tests passed.");[m
+\ No newline at end of file[m
+[32m+[m
+[32m+[m[32mconst toggleState = {[m
+[32m+[m[32m  favorites: { beta: { addedAt: 1 } },[m
+[32m+[m[32m  favoritesUpdatedAt: 0,[m
+[32m+[m[32m  favoritesVersion: 0,[m
+[32m+[m[32m  currentMode: "favorites",[m
+[32m+[m[32m  currentUser: { uid: "user-1" },[m
+[32m+[m[32m  words: [wordsByVol.vol1[1]],[m
+[32m+[m[32m  index: 0,[m
+[32m+[m[32m  indexByVol: { favorites: 0 }[m
+[32m+[m[32m};[m
+[32m+[m[32mlet toggleListRebuilds = 0;[m
+[32m+[m[32mlet toggleRendered = 0;[m
+[32m+[m[32mconst toggleResult = toggleFavoriteCurrentWord(toggleState, {[m
+[32m+[m[32m  getCurrentWord: () => wordsByVol.vol1[1],[m
+[32m+[m[32m  getWords: () => toggleState.words,[m
+[32m+[m[32m  saveFavoritesToLocalOnly: () => {},[m
+[32m+[m[32m  saveFavoritesUpdatedAt: () => {},[m
+[32m+[m[32m  clearWordOrderCache: () => {},[m
+[32m+[m[32m  requestListRebuild: () => { toggleListRebuilds += 1; },[m
+[32m+[m[32m  updateFavoriteToggleButton: () => {},[m
+[32m+[m[32m  saveFavoritesToCloud: () => {},[m
+[32m+[m[32m  applyWordOrder: () => { toggleState.words = buildFavoriteEntries(wordsByVol, ["vol1"], toggleState.favorites); },[m
+[32m+[m[32m  saveIndexByVol: () => {},[m
+[32m+[m[32m  render: () => { toggleRendered += 1; }[m
+[32m+[m[32m});[m
+[32m+[m[32massert.strictEqual(Boolean(toggleState.favorites.beta), false);[m
+[32m+[m[32massert.strictEqual(toggleResult.index, 0);[m
+[32m+[m[32massert.strictEqual(toggleListRebuilds, 1, "favorite toggle should request one list rebuild");[m
+[32m+[m[32massert.strictEqual(toggleRendered, 1);[m
+[32m+[m
+[32m+[m[32mconsole.log("All favorite word tests passed.");[m
+[1mdiff --git a/test/reviewManager.test.js b/test/reviewManager.test.js[m
+[1mindex dbdaf78..2442c19 100644[m
+[1m--- a/test/reviewManager.test.js[m
+[1m+++ b/test/reviewManager.test.js[m
+[36m@@ -6,7 +6,7 @@[m [mimport {[m
+   updateReviewScore[m
+ } from "../reviewManager.js";[m
+ [m
+[31m-const item = { id: "vol1-1-alpha" };[m
+[32m+[m[32mconst item = { id: "alpha", word: "alpha" };[m
+ const scores = {};[m
+ [m
+ assert.strictEqual(getReviewScore(scores, item), 0);[m
+[36m@@ -14,7 +14,7 @@[m [massert.strictEqual(updateReviewScore(scores, item, 1), 1);[m
+ assert.strictEqual(getReviewScore(scores, item), 1);[m
+ assert.strictEqual(updateReviewScore(scores, item, -1), 0);[m
+ assert.strictEqual(getReviewScore(scores, item), 0);[m
+[31m-assert.strictEqual(Boolean(scores[item.id]), false, "zero scores should be removed from storage data");[m
+[32m+[m[32massert.strictEqual(Boolean(scores.alpha), false, "zero scores should be removed from storage data");[m
+ assert.strictEqual(updateReviewScore(scores, item, -10), -5);[m
+ assert.strictEqual(updateReviewScore(scores, item, 20), 5);[m
+ assert.strictEqual(resetReviewScore(scores, item), 0);[m
+[36m@@ -49,4 +49,4 @@[m [massert.deepStrictEqual([m
+   "tie randomization should keep the same items"[m
+ );[m
+ [m
+[31m-console.log("All review score tests passed.");[m
+\ No newline at end of file[m
+[32m+[m[32mconsole.log("All review score tests passed.");[m
+[1mdiff --git a/test/run-tests.js b/test/run-tests.js[m
+[1mindex ceefd7e..d76a95f 100644[m
+[1m--- a/test/run-tests.js[m
+[1m+++ b/test/run-tests.js[m
+[36m@@ -1,5 +1,8 @@[m
+ const tests = [[m
+[32m+[m[32m  "./wordIdentity.test.js",[m
+   "./data.test.js",[m
+[32m+[m[32m  "./wordList.test.js",[m
+[32m+[m[32m  "./pronunciation.test.js",[m
+   "./navigation.test.js",[m
+   "./storage.test.js",[m
+   "./favoritesManager.test.js",[m
+[1mdiff --git a/test/ui.test.js b/test/ui.test.js[m
+[1mindex 89ad507..a71b9c2 100644[m
+[1m--- a/test/ui.test.js[m
+[1m+++ b/test/ui.test.js[m
+[36m@@ -90,7 +90,7 @@[m [mconst loggedOutToggleContext = {[m
+     difficultToggleBtnEl: difficultButton[m
+   },[m
+   callbacks: {[m
+[31m-    getCurrentWord: () => ({ id: "word-1", word: "create" }),[m
+[32m+[m[32m    getCurrentWord: () => ({ id: "create", word: "create" }),[m
+     isFavorite: () => true,[m
+     isDifficult: () => true[m
+   }[m
+[36m@@ -150,7 +150,7 @@[m [mupdateRecallTimeControl(timeControlContext(false, "once"));[m
+ assert.strictEqual(recallClassList.contains("is-inactive"), true, "recall time should dim when challenge mode is off even during auto play");[m
+ assert.strictEqual(displayClassList.contains("is-inactive"), false, "display time should stay active when auto play is on and challenge mode is off");[m
+ [m
+[31m-const reviewWords = [{ id: "word-1" }, { id: "word-2" }];[m
+[32m+[m[32mconst reviewWords = [{ id: "create" }, { id: "review" }];[m
+ let reviewIndex = 0;[m
+ const reviewContext = {[m
+   dom: {[m
+[36m@@ -161,7 +161,7 @@[m [mconst reviewContext = {[m
+   },[m
+   callbacks: {[m
+     getCurrentWord: () => reviewWords[reviewIndex],[m
+[31m-    getReviewScore: (item) => item.id === "word-1" ? 2 : -1[m
+[32m+[m[32m    getReviewScore: (item) => item.id === "create" ? 2 : -1[m
+   }[m
+ };[m
+ [m
+[1mdiff --git a/ui.js b/ui.js[m
+[1mindex 802923c..e191308 100644[m
+[1m--- a/ui.js[m
+[1m+++ b/ui.js[m
+[36m@@ -24,7 +24,7 @@[m [mexport function renderApp(context, options = {}) {[m
+   applySidebarState(context);[m
+ }[m
+ [m
+[31m-export function renderList(context) {[m
+[32m+[m[32mfunction renderList(context) {[m
+   const state = getState(context);[m
+   const dom = getDom(context);[m
+   const callbacks = getCallbacks(context);[m
+[36m@@ -42,51 +42,11 @@[m [mexport function renderList(context) {[m
+   const visibleEntries = getVisibleWordEntries(state);[m
+ [m
+   if (visibleEntries.length === 0 && state.searchQuery) {[m
+[31m-    const row = document.createElement("div");[m
+[31m-    row.className = "word-item empty-result";[m
+[31m-    row.textContent = "該当なし";[m
+[31m-    fragment.appendChild(row);[m
+[32m+[m[32m    fragment.appendChild(createEmptyResultRow());[m
+   }[m
+ [m
+   visibleEntries.forEach(({ item, itemIndex }) => {[m
+[31m-    const row = document.createElement("div");[m
+[31m-    row.className = "word-item";[m
+[31m-    row.dataset.index = String(itemIndex);[m
+[31m-[m
+[31m-    const label = document.createElement("span");[m
+[31m-    label.className = "word-label";[m
+[31m-    if (!item) {[m
+[31m-      label.textContent = "";[m
+[31m-      console.warn('renderList: missing item at index', itemIndex);[m
+[31m-    } else {[m
+[31m-      label.textContent = state.currentMode === "favorites" || state.currentMode === "difficults"[m
+[31m-        ? `${item.word} (${item.sourceVol.replace("vol", "vol.")})`[m
+[31m-        : item.word;[m
+[31m-    }[m
+[31m-    row.appendChild(label);[m
+[31m-[m
+[31m-    const marks = document.createElement("span");[m
+[31m-    marks.className = "item-marks";[m
+[31m-[m
+[31m-    if (item && callbacks.isFavorite(item)) {[m
+[31m-      const star = document.createElement("span");[m
+[31m-      star.className = "item-star";[m
+[31m-      star.textContent = "☆";[m
+[31m-      marks.appendChild(star);[m
+[31m-    }[m
+[31m-[m
+[31m-    if (item && callbacks.isDifficult(item)) {[m
+[31m-      const difficult = document.createElement("span");[m
+[31m-      difficult.className = "item-difficult";[m
+[31m-      difficult.textContent = "△";[m
+[31m-      marks.appendChild(difficult);[m
+[31m-    }[m
+[31m-[m
+[31m-    if (marks.childNodes.length) {[m
+[31m-      row.appendChild(marks);[m
+[31m-    }[m
+[31m-[m
+[31m-    fragment.appendChild(row);[m
+[32m+[m[32m    fragment.appendChild(createWordListRow({ item, itemIndex, state, callbacks }));[m
+   });[m
+ [m
+   dom.listEl.appendChild(fragment);[m
+[36m@@ -95,6 +55,69 @@[m [mexport function renderList(context) {[m
+   highlightActiveWord(context);[m
+ }[m
+ [m
+[32m+[m[32mfunction createEmptyResultRow() {[m
+[32m+[m[32m  const row = document.createElement("div");[m
+[32m+[m[32m  row.className = "word-item empty-result";[m
+[32m+[m[32m  row.textContent = "該当なし";[m
+[32m+[m[32m  return row;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction createWordListRow({ item, itemIndex, state, callbacks }) {[m
+[32m+[m[32m  const row = document.createElement("div");[m
+[32m+[m[32m  row.className = "word-item";[m
+[32m+[m[32m  row.dataset.index = String(itemIndex);[m
+[32m+[m[32m  row.appendChild(createWordLabel(item, itemIndex, state));[m
+[32m+[m
+[32m+[m[32m  const marks = createWordMarks(item, callbacks);[m
+[32m+[m[32m  if (marks.childNodes.length) {[m
+[32m+[m[32m    row.appendChild(marks);[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  return row;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction createWordLabel(item, itemIndex, state) {[m
+[32m+[m[32m  const label = document.createElement("span");[m
+[32m+[m[32m  label.className = "word-label";[m
+[32m+[m
+[32m+[m[32m  if (!item) {[m
+[32m+[m[32m    label.textContent = "";[m
+[32m+[m[32m    console.warn("renderList: missing item at index", itemIndex);[m
+[32m+[m[32m    return label;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  label.textContent = formatWordListLabel(item, state.currentMode);[m
+[32m+[m[32m  return label;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction formatWordListLabel(item, currentMode) {[m
+[32m+[m[32m  return currentMode === "favorites" || currentMode === "difficults"[m
+[32m+[m[32m    ? `${item.word} (${item.sourceVol.replace("vol", "vol.")})`[m
+[32m+[m[32m    : item.word;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction createWordMarks(item, callbacks) {[m
+[32m+[m[32m  const marks = document.createElement("span");[m
+[32m+[m[32m  marks.className = "item-marks";[m
+[32m+[m
+[32m+[m[32m  if (item && callbacks.isFavorite(item)) {[m
+[32m+[m[32m    marks.appendChild(createWordMark("item-star", "☆"));[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (item && callbacks.isDifficult(item)) {[m
+[32m+[m[32m    marks.appendChild(createWordMark("item-difficult", "△"));[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  return marks;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction createWordMark(className, text) {[m
+[32m+[m[32m  const mark = document.createElement("span");[m
+[32m+[m[32m  mark.className = className;[m
+[32m+[m[32m  mark.textContent = text;[m
+[32m+[m[32m  return mark;[m
+[32m+[m[32m}[m
+[32m+[m
+ function getVisibleWordEntries(state) {[m
+   const query = normalizeSearchText(state.searchQuery);[m
+   return state.words[m
+[36m@@ -127,27 +150,7 @@[m [mexport function renderCurrentWord(context) {[m
+ [m
+   const current = callbacks.getCurrentWord();[m
+   if (!current) {[m
+[31m-    if (dom.wordEl) {[m
+[31m-      dom.wordEl.textContent = state.currentMode === "favorites"[m
+[31m-        ? "お気に入りがありません"[m
+[31m-        : state.currentMode === "difficults"[m
+[31m-          ? "苦手単語がありません"[m
+[31m-          : "単語がありません";[m
+[31m-    }[m
+[31m-    if (dom.meaningEl) {[m
+[31m-      dom.meaningEl.textContent = state.currentMode === "favorites"[m
+[31m-        ? "☆を付けるとここに表示されます"[m
+[31m-        : state.currentMode === "difficults"[m
+[31m-          ? "△を付けるとここに表示されます"[m
+[31m-          : "";[m
+[31m-    }[m
+[31m-    if (dom.progressEl) dom.progressEl.textContent = "";[m
+[31m-    if (dom.pronunciationEl) dom.pronunciationEl.textContent = "";[m
+[31m-    if (dom.prevHintEl) dom.prevHintEl.textContent = "";[m
+[31m-    if (dom.nextHintEl) dom.nextHintEl.textContent = "";[m
+[31m-    updateFavoriteToggleButton(context);[m
+[31m-    updateDifficultToggleButton(context);[m
+[31m-    updateReviewButtons(context);[m
+[32m+[m[32m    renderEmptyCurrentWord(context);[m
+     return;[m
+   }[m
+ [m
+[36m@@ -157,6 +160,34 @@[m [mexport function renderCurrentWord(context) {[m
+   callbacks.loadPronunciation(current.word);[m
+ }[m
+ [m
+[32m+[m[32mfunction renderEmptyCurrentWord(context) {[m
+[32m+[m[32m  const state = getState(context);[m
+[32m+[m[32m  const dom = getDom(context);[m
+[32m+[m
+[32m+[m[32m  if (dom.wordEl) dom.wordEl.textContent = getEmptyWordText(state.currentMode);[m
+[32m+[m[32m  if (dom.meaningEl) dom.meaningEl.textContent = getEmptyMeaningText(state.currentMode);[m
+[32m+[m[32m  if (dom.progressEl) dom.progressEl.textContent = "";[m
+[32m+[m[32m  if (dom.pronunciationEl) dom.pronunciationEl.textContent = "";[m
+[32m+[m[32m  if (dom.prevHintEl) dom.prevHintEl.textContent = "";[m
+[32m+[m[32m  if (dom.nextHintEl) dom.nextHintEl.textContent = "";[m
+[32m+[m
+[32m+[m[32m  updateFavoriteToggleButton(context);[m
+[32m+[m[32m  updateDifficultToggleButton(context);[m
+[32m+[m[32m  updateReviewButtons(context);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction getEmptyWordText(currentMode) {[m
+[32m+[m[32m  if (currentMode === "favorites") return "お気に入りがありません";[m
+[32m+[m[32m  if (currentMode === "difficults") return "苦手単語がありません";[m
+[32m+[m[32m  return "単語がありません";[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction getEmptyMeaningText(currentMode) {[m
+[32m+[m[32m  if (currentMode === "favorites") return "☆を付けるとここに表示されます";[m
+[32m+[m[32m  if (currentMode === "difficults") return "△を付けるとここに表示されます";[m
+[32m+[m[32m  return "";[m
+[32m+[m[32m}[m
+[32m+[m
+ function renderWordText(context, current) {[m
+   const state = getState(context);[m
+   const dom = getDom(context);[m
+[36m@@ -181,19 +212,16 @@[m [mexport function updateCurrentLabel(context) {[m
+   const dom = getDom(context);[m
+ [m
+   if (!dom.currentEl) return;[m
+[32m+[m[32m  dom.currentEl.textContent = getCurrentModeLabel(state);[m
+[32m+[m[32m}[m
+ [m
+[31m-  let label = state.currentMode === "favorites"[m
+[31m-    ? "☆"[m
+[31m-    : state.currentMode === "difficults"[m
+[31m-      ? "△"[m
+[31m-      : `vol.${state.currentVol.replace("vol", "")}`;[m
+[31m-[m
+[31m-[m
+[31m-[m
+[31m-  dom.currentEl.textContent = label;[m
+[32m+[m[32mfunction getCurrentModeLabel(state) {[m
+[32m+[m[32m  if (state.currentMode === "favorites") return "☆";[m
+[32m+[m[32m  if (state.currentMode === "difficults") return "△";[m
+[32m+[m[32m  return `vol.${state.currentVol.replace("vol", "")}`;[m
+ }[m
+ [m
+[31m-export function updateTopButtons(context) {[m
+[32m+[m[32mfunction updateTopButtons(context) {[m
+   const state = getState(context);[m
+   const dom = getDom(context);[m
+ [m
+[36m@@ -211,7 +239,7 @@[m [mexport function updateTopButtons(context) {[m
+   }[m
+ }[m
+ [m
+[31m-export function updateToggleButton(context, button, label, isActive) {[m
+[32m+[m[32mfunction updateToggleButton(context, button, label, isActive) {[m
+   if (!button) return;[m
+   button.textContent = label;[m
+   button.classList.toggle("active", isActive);[m
+[36m@@ -224,26 +252,17 @@[m [mexport function updateFavoriteToggleButton(context) {[m
+   const callbacks = getCallbacks(context);[m
+   const state = context.getState();[m
+   const current = callbacks.getCurrentWord();[m
+[31m-  if (!dom.favoriteToggleBtnEl) return;[m
+[31m-[m
+[31m-  if (!current || !state.currentUser) {[m
+[31m-    dom.favoriteToggleBtnEl.textContent = "☆";[m
+[31m-    dom.favoriteToggleBtnEl.classList.remove("active");[m
+[31m-    dom.favoriteToggleBtnEl.title = state.currentUser ? "お気に入り登録" : "ログインするとお気に入り登録できます";[m
+[31m-    dom.favoriteToggleBtnEl.setAttribute("aria-label", state.currentUser ? "お気に入り登録" : "ログインするとお気に入り登録できます");[m
+[31m-    dom.favoriteToggleBtnEl.setAttribute("aria-pressed", "false");[m
+[31m-    dom.favoriteToggleBtnEl.disabled = true;[m
+[31m-    return;[m
+[31m-  }[m
+ [m
+[31m-  dom.favoriteToggleBtnEl.disabled = false;[m
+[31m-[m
+[31m-  const active = callbacks.isFavorite(current);[m
+[31m-  dom.favoriteToggleBtnEl.textContent = "☆";[m
+[31m-  dom.favoriteToggleBtnEl.classList.toggle("active", active);[m
+[31m-  dom.favoriteToggleBtnEl.title = active ? "お気に入り解除" : "お気に入り登録";[m
+[31m-  dom.favoriteToggleBtnEl.setAttribute("aria-label", active ? "お気に入り解除" : "お気に入り登録");[m
+[31m-  dom.favoriteToggleBtnEl.setAttribute("aria-pressed", active ? "true" : "false");[m
+[32m+[m[32m  updateWordMarkToggleButton({[m
+[32m+[m[32m    button: dom.favoriteToggleBtnEl,[m
+[32m+[m[32m    current,[m
+[32m+[m[32m    currentUser: state.currentUser,[m
+[32m+[m[32m    symbol: "☆",[m
+[32m+[m[32m    inactiveLabel: "お気に入り登録",[m
+[32m+[m[32m    activeLabel: "お気に入り解除",[m
+[32m+[m[32m    loggedOutLabel: "ログインするとお気に入り登録できます",[m
+[32m+[m[32m    isActive: callbacks.isFavorite[m
+[32m+[m[32m  });[m
+ }[m
+ [m
+ export function updateDifficultToggleButton(context) {[m
+[36m@@ -251,26 +270,51 @@[m [mexport function updateDifficultToggleButton(context) {[m
+   const callbacks = getCallbacks(context);[m
+   const state = context.getState();[m
+   const current = callbacks.getCurrentWord();[m
+[31m-  if (!dom.difficultToggleBtnEl) return;[m
+[31m-[m
+[31m-  if (!current || !state.currentUser) {[m
+[31m-    dom.difficultToggleBtnEl.textContent = "△";[m
+[31m-    dom.difficultToggleBtnEl.classList.remove("active");[m
+[31m-    dom.difficultToggleBtnEl.title = state.currentUser ? "苦手に追加" : "ログインすると苦手に追加できます";[m
+[31m-    dom.difficultToggleBtnEl.setAttribute("aria-label", state.currentUser ? "苦手に追加" : "ログインすると苦手に追加できます");[m
+[31m-    dom.difficultToggleBtnEl.setAttribute("aria-pressed", "false");[m
+[31m-    dom.difficultToggleBtnEl.disabled = true;[m
+[32m+[m
+[32m+[m[32m  updateWordMarkToggleButton({[m
+[32m+[m[32m    button: dom.difficultToggleBtnEl,[m
+[32m+[m[32m    current,[m
+[32m+[m[32m    currentUser: state.currentUser,[m
+[32m+[m[32m    symbol: "△",[m
+[32m+[m[32m    inactiveLabel: "苦手に追加",[m
+[32m+[m[32m    activeLabel: "苦手から外す",[m
+[32m+[m[32m    loggedOutLabel: "ログインすると苦手に追加できます",[m
+[32m+[m[32m    isActive: callbacks.isDifficult[m
+[32m+[m[32m  });[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction updateWordMarkToggleButton({[m
+[32m+[m[32m  button,[m
+[32m+[m[32m  current,[m
+[32m+[m[32m  currentUser,[m
+[32m+[m[32m  symbol,[m
+[32m+[m[32m  inactiveLabel,[m
+[32m+[m[32m  activeLabel,[m
+[32m+[m[32m  loggedOutLabel,[m
+[32m+[m[32m  isActive[m
+[32m+[m[32m}) {[m
+[32m+[m[32m  if (!button) return;[m
+[32m+[m
+[32m+[m[32m  button.textContent = symbol;[m
+[32m+[m
+[32m+[m[32m  if (!current || !currentUser) {[m
+[32m+[m[32m    const label = currentUser ? inactiveLabel : loggedOutLabel;[m
+[32m+[m[32m    button.disabled = true;[m
+[32m+[m[32m    button.classList.remove("active");[m
+[32m+[m[32m    button.title = label;[m
+[32m+[m[32m    button.setAttribute("aria-label", label);[m
+[32m+[m[32m    button.setAttribute("aria-pressed", "false");[m
+     return;[m
+   }[m
+ [m
+[31m-  dom.difficultToggleBtnEl.disabled = false;[m
+[32m+[m[32m  const active = isActive(current);[m
+[32m+[m[32m  const label = active ? activeLabel : inactiveLabel;[m
+ [m
+[31m-  const active = callbacks.isDifficult(current);[m
+[31m-  dom.difficultToggleBtnEl.textContent = "△";[m
+[31m-  dom.difficultToggleBtnEl.classList.toggle("active", active);[m
+[31m-  dom.difficultToggleBtnEl.title = active ? "苦手から外す" : "苦手に追加";[m
+[31m-  dom.difficultToggleBtnEl.setAttribute("aria-label", active ? "苦手から外す" : "苦手に追加");[m
+[31m-  dom.difficultToggleBtnEl.setAttribute("aria-pressed", active ? "true" : "false");[m
+[32m+[m[32m  button.disabled = false;[m
+[32m+[m[32m  button.classList.toggle("active", active);[m
+[32m+[m[32m  button.title = label;[m
+[32m+[m[32m  button.setAttribute("aria-label", label);[m
+[32m+[m[32m  button.setAttribute("aria-pressed", active ? "true" : "false");[m
+ }[m
+ [m
+ [m
+[36m@@ -303,7 +347,7 @@[m [mfunction setReviewButtonState(button, disabled, label) {[m
+   button.setAttribute("aria-pressed", "false");[m
+   button.title = label;[m
+ }[m
+[31m-export function updateNavHints(context) {[m
+[32m+[m[32mfunction updateNavHints(context) {[m
+   const state = getState(context);[m
+   const dom = getDom(context);[m
+ [m
+[36m@@ -314,19 +358,29 @@[m [mexport function updateNavHints(context) {[m
+     return;[m
+   }[m
+ [m
+[31m-  const prevIndex = state.randomMode && state.historyBackStack.length[m
+[31m-    ? state.historyBackStack[state.historyBackStack.length - 1][m
+[31m-    : (state.index - 1 + state.words.length) % state.words.length;[m
+[31m-[m
+[31m-  const nextIndex = state.randomMode && state.historyForwardStack.length[m
+[31m-    ? state.historyForwardStack[state.historyForwardStack.length - 1][m
+[31m-    : (state.index + 1) % state.words.length;[m
+[31m-[m
+[32m+[m[32m  const prevIndex = getPreviousHintIndex(state);[m
+[32m+[m[32m  const nextIndex = getNextHintIndex(state);[m
+   dom.prevHintEl.textContent = state.words[prevIndex]?.word || "";[m
+   dom.nextHintEl.textContent = state.words[nextIndex]?.word || "";[m
+ }[m
+ [m
+[31m-export function updateProgress(context) {[m
+[32m+[m[32mfunction getPreviousHintIndex(state) {[m
+[32m+[m[32m  if (state.randomMode && state.historyBackStack.length) {[m
+[32m+[m[32m    return state.historyBackStack[state.historyBackStack.length - 1];[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  return (state.index - 1 + state.words.length) % state.words.length;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction getNextHintIndex(state) {[m
+[32m+[m[32m  if (state.randomMode && state.historyForwardStack.length) {[m
+[32m+[m[32m    return state.historyForwardStack[state.historyForwardStack.length - 1];[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  return (state.index + 1) % state.words.length;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction updateProgress(context) {[m
+   const state = getState(context);[m
+   const dom = getDom(context);[m
+ [m
+[36m@@ -343,6 +397,7 @@[m [mexport function updateRecallTimeControl(context) {[m
+   dom.recallTimeControlEl?.classList.toggle("is-inactive", !state.challengeMode);[m
+   dom.displayTimeControlEl?.classList.toggle("is-inactive", state.autoPlayMode === "off");[m
+ }[m
+[32m+[m
+ export function updateSpeechSyncButton(context) {[m
+   updateToggleButton(context, getDom(context).speechSyncBtnEl, "発音同期", getState(context).speechSync);[m
+ }[m
+[36m@@ -380,7 +435,7 @@[m [mexport function updateAuthUI(context) {[m
+   dom.logoutBtnEl.hidden = !state.currentUser;[m
+ }[m
+ [m
+[31m-export function updateMeaningDisplay(context, meaning) {[m
+[32m+[m[32mfunction updateMeaningDisplay(context, meaning) {[m
+   const state = getState(context);[m
+   const dom = getDom(context);[m
+   const callbacks = getCallbacks(context);[m

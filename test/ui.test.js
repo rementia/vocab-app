@@ -90,7 +90,7 @@ const loggedOutToggleContext = {
     difficultToggleBtnEl: difficultButton
   },
   callbacks: {
-    getCurrentWord: () => ({ id: "word-1", word: "create" }),
+    getCurrentWord: () => ({ id: "create", word: "create" }),
     isFavorite: () => true,
     isDifficult: () => true
   }
@@ -150,7 +150,7 @@ updateRecallTimeControl(timeControlContext(false, "once"));
 assert.strictEqual(recallClassList.contains("is-inactive"), true, "recall time should dim when challenge mode is off even during auto play");
 assert.strictEqual(displayClassList.contains("is-inactive"), false, "display time should stay active when auto play is on and challenge mode is off");
 
-const reviewWords = [{ id: "word-1" }, { id: "word-2" }];
+const reviewWords = [{ id: "create" }, { id: "review" }];
 let reviewIndex = 0;
 const reviewContext = {
   dom: {
@@ -161,7 +161,7 @@ const reviewContext = {
   },
   callbacks: {
     getCurrentWord: () => reviewWords[reviewIndex],
-    getReviewScore: (item) => item.id === "word-1" ? 2 : -1
+    getReviewScore: (item) => item.id === "create" ? 2 : -1
   }
 };
 

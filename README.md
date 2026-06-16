@@ -49,7 +49,7 @@ For the public portfolio demo, the app uses a small sample vocabulary dataset pr
 
 The public demo uses a dedicated sample vocabulary sheet.
 
-Vocabulary data is loaded from a Google Sheets CSV export URL. Only demonstration data is included in this public version, and the dataset is intentionally kept small to avoid reproducing any specific commercial textbook or word list.
+Vocabulary data is loaded from a Google Sheets CSV export URL. The demo sheet uses `word`, `meaning`, and `level` columns, and the app maps `level` values 1-4 to vol.1-vol.4. Only demonstration data is included in this public version, and the dataset is intentionally kept small to avoid reproducing any specific commercial textbook or word list.
 
 Favorite words are saved separately in Cloud Firestore for each logged-in user.
 

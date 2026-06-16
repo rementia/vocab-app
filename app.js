@@ -1,5 +1,5 @@
 ﻿import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-import { sheetUrls, fetchWordsForVol } from './data.js';
+import { fetchWordsForVol } from './data.js';
 import { getDomElements } from './dom.js';
 import { auth, db, provider } from './firebaseClient.js';
 import {
@@ -64,6 +64,8 @@ import {
   resetReviewScore,
   sortByReviewScore
 } from './reviewManager.js';
+import { clampIndex } from './wordList.js';
+import { normalizeWordRecordMap } from './wordIdentity.js';
 import {
   bindKeyboardEvents,
   bindTouchEvents,
@@ -257,8 +259,9 @@ const uiContext = {
 };
 
 const AUTO_PLAY_SKIP_LOCK_MS = 500;
+const SPEECH_SYNC_DELAY_MS = 260;
 
-let shuffledWordsMap = {};
+let wordOrderCache = {};
 
 async function init() {
   loadSavedState();
@@ -424,7 +427,7 @@ function handleToggleFavoriteCurrentWord() {
       getWords: () => words,
       saveFavoritesToLocalOnly,
       saveFavoritesUpdatedAt,
-      clearAllShuffleCache,
+      clearWordOrderCache,
       requestListRebuild,
       updateFavoriteToggleButton,
       saveFavoritesToCloud,
@@ -468,7 +471,7 @@ function handleToggleDifficultCurrentWord() {
       getWords: () => words,
       saveDifficultsToLocalOnly,
       saveDifficultsUpdatedAt,
-      clearAllShuffleCache,
+      clearWordOrderCache,
       requestListRebuild,
       updateDifficultToggleButton,
       saveDifficultsToCloud,
@@ -566,12 +569,12 @@ function bindUIEvents() {
   });
 
   if (timeSlider && timeValue) {
-    timeSlider.value = Math.min(challengeTime / 1000, Number(timeSlider.max));
-    timeValue.textContent = (challengeTime / 1000).toFixed(1);
+    setSecondsSliderValue(timeSlider, timeValue, challengeTime);
 
     timeSlider.addEventListener("input", () => {
-      challengeTime = parseFloat(timeSlider.value) * 1000;
-      timeValue.textContent = parseFloat(timeSlider.value).toFixed(1);
+      const seconds = readSliderSeconds(timeSlider);
+      challengeTime = seconds * 1000;
+      timeValue.textContent = formatSeconds(seconds);
       saveChallengeTimeState(challengeTime);
 
       if (challengeMode && !isAutoPlayActive()) {
@@ -581,12 +584,12 @@ function bindUIEvents() {
   }
 
   if (displayTimeSlider && displayTimeValue) {
-    displayTimeSlider.value = Math.min(displayTime / 1000, Number(displayTimeSlider.max));
-    displayTimeValue.textContent = (displayTime / 1000).toFixed(1);
+    setSecondsSliderValue(displayTimeSlider, displayTimeValue, displayTime);
 
     displayTimeSlider.addEventListener("input", () => {
-      displayTime = parseFloat(displayTimeSlider.value) * 1000;
-      displayTimeValue.textContent = parseFloat(displayTimeSlider.value).toFixed(1);
+      const seconds = readSliderSeconds(displayTimeSlider);
+      displayTime = seconds * 1000;
+      displayTimeValue.textContent = formatSeconds(seconds);
       saveDisplayTimeState(displayTime);
     });
   }
@@ -602,14 +605,33 @@ function bindUIEvents() {
 
   listEl?.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target.closest(".word-item") : null;
-    if (!(target instanceof HTMLElement)) return;
-
-    const nextIndex = Number(target.dataset.index);
-    if (Number.isNaN(nextIndex)) return;
+    const nextIndex = readWordItemIndex(target);
+    if (nextIndex === null) return;
 
     navMoveToIndex(nextIndex, { pushHistory: true });
     scheduleAutoPlayAfterRender();
   });
+}
+
+function setSecondsSliderValue(slider, label, milliseconds) {
+  const seconds = Math.min(milliseconds / 1000, Number(slider.max));
+  slider.value = seconds;
+  label.textContent = formatSeconds(seconds);
+}
+
+function readSliderSeconds(slider) {
+  return parseFloat(slider.value);
+}
+
+function formatSeconds(seconds) {
+  return seconds.toFixed(1);
+}
+
+function readWordItemIndex(item) {
+  if (!(item instanceof HTMLElement)) return null;
+
+  const itemIndex = Number(item.dataset.index);
+  return Number.isNaN(itemIndex) ? null : itemIndex;
 }
 
 function getDefaultSidebarOpen() {
@@ -634,7 +656,7 @@ function loadSavedState() {
   const savedFrequencyMode = safeGetItem(STORAGE_KEYS.frequencyMode);
   const savedMode = safeGetItem(STORAGE_KEYS.mode);
 
-  if (savedVol && sheetUrls[savedVol]) currentVol = savedVol;
+  if (savedVol && volOrder.includes(savedVol)) currentVol = savedVol;
   sidebarOpen = savedSidebarOpen !== null ? savedSidebarOpen === "true" : getDefaultSidebarOpen();
   if (savedSpeechSync !== null) speechSync = savedSpeechSync === "true";
 
@@ -653,7 +675,7 @@ function loadSavedState() {
   if (savedFavorites) {
     try {
       const parsedFavorites = JSON.parse(savedFavorites);
-      favorites = parsedFavorites && typeof parsedFavorites === "object" ? parsedFavorites : {};
+      favorites = normalizeWordRecordMap(parsedFavorites);
     } catch {
       favorites = {};
     }
@@ -663,7 +685,7 @@ function loadSavedState() {
   if (savedDifficults) {
     try {
       const parsedDifficults = JSON.parse(savedDifficults);
-      difficults = parsedDifficults && typeof parsedDifficults === "object" ? parsedDifficults : {};
+      difficults = normalizeWordRecordMap(parsedDifficults);
     } catch {
       difficults = {};
     }
@@ -671,7 +693,7 @@ function loadSavedState() {
   if (savedReviewScores) {
     try {
       const parsedReviewScores = JSON.parse(savedReviewScores);
-      reviewScores = parsedReviewScores && typeof parsedReviewScores === "object" ? parsedReviewScores : {};
+      reviewScores = normalizeWordRecordMap(parsedReviewScores);
     } catch {
       reviewScores = {};
     }
@@ -745,7 +767,7 @@ function clearUserMarksForLoggedOut() {
   difficultsUpdatedAt = 0;
   favoritesVersion += 1;
   difficultsVersion += 1;
-  clearAllShuffleCache();
+  clearWordOrderCache();
   requestListRebuild();
   render();
 }
@@ -763,7 +785,7 @@ function subscribeFavoritesRealtime() {
 
     saveFavoritesToLocalOnly(favorites);
     saveFavoritesUpdatedAt(favoritesUpdatedAt);
-    clearAllShuffleCache();
+    clearWordOrderCache();
     requestListRebuild();
 
     if (currentMode === "favorites") {
@@ -779,7 +801,7 @@ function subscribeFavoritesRealtime() {
 
       saveDifficultsToLocalOnly(difficults);
       saveDifficultsUpdatedAt(difficultsUpdatedAt);
-      clearAllShuffleCache();
+      clearWordOrderCache();
       requestListRebuild();
 
       if (currentMode === "difficults") {
@@ -892,9 +914,9 @@ async function loadSheet(volName) {
     saveCurrentModeState(currentMode);
     // 指定ボリュームを先に読み込み、words を確実に設定する
     await ensureVolLoaded(volName);
-    clearAllShuffleCache();
+    clearWordOrderCache();
     applyWordOrder();
-    index = Math.min(indexByVol[volName] || 0, Math.max(words.length - 1, 0));
+    index = clampIndex(indexByVol[volName] || 0, words);
 
     requestListRebuild();
     render();
@@ -915,7 +937,7 @@ async function preloadOtherVolumesInBackground() {
   await Promise.all(otherVols.map((vol) => ensureVolLoaded(vol).catch(() => {})));
 }
 
-function makeShuffleKey(orderMode) {
+function makeWordOrderCacheKey(orderMode) {
   const scope = currentMode === "favorites"
     ? "favorites:all"
     : currentMode === "difficults"
@@ -946,8 +968,8 @@ function applyWordOrder(resetIndex = false, preserveCurrentId = null) {
       : frequencyMode
         ? "frequency"
         : "random";
-    const shuffleKey = makeShuffleKey(orderMode);
-    const currentCache = shuffledWordsMap[shuffleKey];
+    const cacheKey = makeWordOrderCacheKey(orderMode);
+    const currentCache = wordOrderCache[cacheKey];
 
     const cacheValid =
       Array.isArray(currentCache) &&
@@ -955,26 +977,26 @@ function applyWordOrder(resetIndex = false, preserveCurrentId = null) {
       currentCache.every((item) => baseWords.some((base) => base.id === item.id));
 
     if (!cacheValid) {
-      shuffledWordsMap[shuffleKey] = frequencyMode
+      wordOrderCache[cacheKey] = frequencyMode
         ? sortByReviewScore(baseWords, (item) => getReviewScore(reviewScores, item), { randomizeTies: randomMode })
         : shuffleArray(baseWords);
     }
 
-    words = shuffledWordsMap[shuffleKey];
+    words = wordOrderCache[cacheKey];
   } else {
     words = baseWords;
   }
 
   if (preserveCurrentId) {
     const preservedIndex = words.findIndex((item) => item && item.id === preserveCurrentId);
-    index = preservedIndex >= 0 ? preservedIndex : Math.min(index, Math.max(words.length - 1, 0));
+    index = preservedIndex >= 0 ? preservedIndex : clampIndex(index, words);
   } else {
-    index = resetIndex ? 0 : Math.min(index, Math.max(words.length - 1, 0));
+    index = resetIndex ? 0 : clampIndex(index, words);
   }
 }
 
-function clearAllShuffleCache() {
-  shuffledWordsMap = {};
+function clearWordOrderCache() {
+  wordOrderCache = {};
 }
 
 function requestListRebuild() {
@@ -1248,7 +1270,7 @@ function scheduleSpeechSync() {
   clearSpeechSyncTimer();
   speechSyncTimer = setTimeout(() => {
     speakWord();
-  }, 260);
+  }, SPEECH_SYNC_DELAY_MS);
 }
 
 function scheduleSpeechSyncAfterRender() {
@@ -1292,20 +1314,21 @@ function getSearchResultItems() {
     .filter((item) => item instanceof HTMLElement);
 }
 
-function moveToSearchResult(direction) {
-  const resultItems = getSearchResultItems();
-  if (!resultItems.length) return;
-
+function getNextSearchResultItem(resultItems, direction) {
   const activeResultIndex = resultItems.findIndex((item) => Number(item.dataset.index) === index);
   const fallbackIndex = direction > 0 ? 0 : resultItems.length - 1;
   const nextResultIndex = activeResultIndex >= 0
     ? (activeResultIndex + direction + resultItems.length) % resultItems.length
     : fallbackIndex;
-  const nextItem = resultItems[nextResultIndex];
-  if (!(nextItem instanceof HTMLElement)) return;
+  return resultItems[nextResultIndex];
+}
 
-  const nextIndex = Number(nextItem.dataset.index);
-  if (Number.isNaN(nextIndex)) return;
+function moveToSearchResult(direction) {
+  const resultItems = getSearchResultItems();
+  if (!resultItems.length) return;
+
+  const nextIndex = readWordItemIndex(getNextSearchResultItem(resultItems, direction));
+  if (nextIndex === null) return;
 
   navMoveToIndex(nextIndex, { pushHistory: true });
   scheduleAutoPlayAfterRender();
@@ -1395,7 +1418,7 @@ function toggleRandomMode() {
   saveRandomModeState(randomMode);
   updateRandomButton();
   navClearNavigationHistory();
-  clearAllShuffleCache();
+  clearWordOrderCache();
 
   if (isAutoPlayActive()) {
     wordOrderUpdatePending = true;
@@ -1414,7 +1437,7 @@ function toggleFrequencyMode() {
   saveFrequencyModeState(frequencyMode);
   updateFrequencyButton();
   navClearNavigationHistory();
-  clearAllShuffleCache();
+  clearWordOrderCache();
 
   if (isAutoPlayActive()) {
     wordOrderUpdatePending = true;

@@ -1,5 +1,8 @@
 const tests = [
+  "./wordIdentity.test.js",
   "./data.test.js",
+  "./wordList.test.js",
+  "./pronunciation.test.js",
   "./navigation.test.js",
   "./storage.test.js",
   "./favoritesManager.test.js",
