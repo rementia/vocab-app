@@ -26,6 +26,7 @@ import {
   saveChallengeTimeState,
   saveDisplayTimeState,
   saveTranslationModeState,
+  saveMultipleChoiceModeState,
   saveAutoPlayState,
   saveRandomModeState,
   saveFrequencyModeState
@@ -37,6 +38,7 @@ import {
   updateChallengeButton as uiUpdateChallengeButton,
   updateRecallTimeControl as uiUpdateRecallTimeControl,
   updateTranslationButton as uiUpdateTranslationButton,
+  updateMultipleChoiceButton as uiUpdateMultipleChoiceButton,
   updateAutoPlayButton as uiUpdateAutoPlayButton,
   updateRandomButton as uiUpdateRandomButton,
   updateFrequencyButton as uiUpdateFrequencyButton,
@@ -60,6 +62,8 @@ import {
 } from './difficultsManager.js';
 import {
   getReviewScore,
+  getReviewWeight,
+  recordReviewAnswer,
   updateReviewScore,
   resetReviewScore,
   sortByReviewScore
@@ -125,6 +129,11 @@ const {
   speechSyncBtnEl,
   challengeBtnEl,
   translationBtnEl,
+  multipleChoiceBtnEl,
+  multipleChoicePanelEl,
+  multipleChoiceQuestionEl,
+  multipleChoiceOptionsEl,
+  multipleChoiceFeedbackEl,
   autoPlayBtnEl,
   randomBtnEl,
   frequencyBtnEl,
@@ -157,6 +166,7 @@ let challengeMode = false;
 let challengeTime = 1500;
 let displayTime = 1500;
 let translationMode = false;
+let multipleChoiceMode = false;
 let autoPlayMode = "off";
 let autoPlayOnceStartPoint = null;
 let randomMode = false;
@@ -171,6 +181,9 @@ let autoPlayDisplayPhaseTimer = null;
 let autoPlayWaitStartedAt = 0;
 let wordOrderUpdatePending = false;
 let hasFinishedInitialLoading = false;
+let multipleChoiceQuestion = null;
+let multipleChoiceAnswer = null;
+let multipleChoiceRevealedOptionIndexes = new Set();
 
 let listNeedsRebuild = true;
 let renderedListVersion = "";
@@ -201,6 +214,9 @@ const uiContext = {
     challengeTime,
     displayTime,
     translationMode,
+    multipleChoiceMode,
+    multipleChoiceAnswer,
+    multipleChoiceRevealedOptionIndexes: [...multipleChoiceRevealedOptionIndexes],
     autoPlayMode,
     historyBackStack: getHistoryBackStack(),
     historyForwardStack: getHistoryForwardStack(),
@@ -234,6 +250,11 @@ const uiContext = {
     speechSyncBtnEl,
     challengeBtnEl,
     translationBtnEl,
+    multipleChoiceBtnEl,
+    multipleChoicePanelEl,
+    multipleChoiceQuestionEl,
+    multipleChoiceOptionsEl,
+    multipleChoiceFeedbackEl,
     autoPlayBtnEl,
     randomBtnEl,
     frequencyBtnEl,
@@ -246,6 +267,7 @@ const uiContext = {
     isFavorite: (item) => isFavorite(favorites, item),
     isDifficult: (item) => isDifficult(difficults, item),
     getReviewScore: (item) => getReviewScore(reviewScores, item),
+    getMultipleChoiceQuestion,
     getCurrentWord,
     persistCurrentIndex,
     loadPronunciation,
@@ -512,8 +534,162 @@ function handleResetReviewCurrentWord() {
 function finishReviewScoreChange() {
   reviewScoresVersion += 1;
   saveReviewScoresToLocalOnly(reviewScores);
+  clearWordOrderCache();
+  if (frequencyMode) {
+    applyWordOrder(false, getCurrentWord()?.id || null);
+    requestListRebuild();
+  }
   renderLayout();
   updateReviewButtons();
+}
+
+function finishReviewStatsChange(preserveCurrentId) {
+  reviewScoresVersion += 1;
+  saveReviewScoresToLocalOnly(reviewScores);
+  clearWordOrderCache();
+
+  if (frequencyMode) {
+    applyWordOrder(false, preserveCurrentId);
+    requestListRebuild();
+  }
+
+  renderLayout();
+  updateReviewButtons();
+}
+
+function getAllLoadedWords() {
+  return volOrder.flatMap((volName) => allWordsByVol[volName] || []);
+}
+
+function getMultipleChoicePrompt(item) {
+  return translationMode ? item.meaning : item.word;
+}
+
+function getMultipleChoiceAnswerText(item) {
+  return translationMode ? item.word : item.meaning;
+}
+
+function getMultipleChoiceSecondaryText(item) {
+  return translationMode ? item.meaning : item.word;
+}
+
+function getMultipleChoiceDirection() {
+  return translationMode ? "meaning-to-word" : "word-to-meaning";
+}
+
+function hasChoiceText(item) {
+  return Boolean(getMultipleChoiceAnswerText(item));
+}
+
+function sameWord(a, b) {
+  return Boolean(a && b && (a.id === b.id || a.word === b.word));
+}
+
+function collectDistractors(current) {
+  const correctText = getMultipleChoiceAnswerText(current);
+  const sameVolCandidates = (allWordsByVol[current.sourceVol] || [])
+    .filter((item) => !sameWord(item, current) && hasChoiceText(item));
+  const allCandidates = getAllLoadedWords()
+    .filter((item) => !sameWord(item, current) && hasChoiceText(item));
+
+  return [...sameVolCandidates, ...allCandidates].reduce((unique, item) => {
+    const choiceText = getMultipleChoiceAnswerText(item);
+    if (
+      !choiceText ||
+      choiceText === correctText ||
+      unique.some((candidate) => getMultipleChoiceAnswerText(candidate) === choiceText)
+    ) {
+      return unique;
+    }
+    unique.push(item);
+    return unique;
+  }, []);
+}
+
+function buildMultipleChoiceQuestion(current) {
+  const correctText = getMultipleChoiceAnswerText(current);
+  if (!current || !correctText) return null;
+
+  const distractors = shuffleArray(collectDistractors(current)).slice(0, 3);
+  const options = shuffleArray([
+    { text: correctText, secondaryText: getMultipleChoiceSecondaryText(current), isCorrect: true },
+    ...distractors.map((item) => ({
+      text: getMultipleChoiceAnswerText(item),
+      secondaryText: getMultipleChoiceSecondaryText(item),
+      isCorrect: false
+    }))
+  ]);
+
+  return {
+    wordId: current.id,
+    direction: getMultipleChoiceDirection(),
+    prompt: getMultipleChoicePrompt(current),
+    correctText,
+    options
+  };
+}
+
+function getMultipleChoiceQuestion() {
+  if (!multipleChoiceMode) return null;
+
+  const current = getCurrentWord();
+  if (!current) {
+    multipleChoiceQuestion = null;
+    multipleChoiceAnswer = null;
+    multipleChoiceRevealedOptionIndexes.clear();
+    return null;
+  }
+
+  const direction = getMultipleChoiceDirection();
+  if (
+    !multipleChoiceQuestion ||
+    multipleChoiceQuestion.wordId !== current.id ||
+    multipleChoiceQuestion.direction !== direction
+  ) {
+    multipleChoiceQuestion = buildMultipleChoiceQuestion(current);
+    multipleChoiceAnswer = null;
+    multipleChoiceRevealedOptionIndexes.clear();
+  }
+
+  return multipleChoiceQuestion;
+}
+
+function handleMultipleChoiceOptionClick(event) {
+  const button = event.target instanceof Element
+    ? event.target.closest(".multiple-choice-option")
+    : null;
+  if (!(button instanceof HTMLElement)) return;
+
+  const question = getMultipleChoiceQuestion();
+  const current = getCurrentWord();
+  if (!question || !current) return;
+
+  const choiceIndex = Number(button.dataset.choiceIndex);
+  const selectedOption = question.options[choiceIndex];
+  if (!selectedOption) return;
+
+  if (multipleChoiceAnswer) {
+    if (!selectedOption.isCorrect) {
+      if (multipleChoiceRevealedOptionIndexes.has(choiceIndex)) {
+        multipleChoiceRevealedOptionIndexes.delete(choiceIndex);
+      } else {
+        multipleChoiceRevealedOptionIndexes.add(choiceIndex);
+      }
+      renderCurrentWord();
+    }
+    return;
+  }
+
+  multipleChoiceAnswer = {
+    wordId: current.id,
+    selectedText: selectedOption.text,
+    correctText: question.correctText,
+    isCorrect: selectedOption.isCorrect
+  };
+
+  recordReviewAnswer(reviewScores, current, selectedOption.isCorrect);
+  finishReviewStatsChange(current.id);
+  scheduleSpeechSync();
 }
 function flashReviewButton(button) {
   if (!button) return;
@@ -543,6 +719,7 @@ function bindUIEvents() {
   speechSyncBtnEl?.addEventListener("click", toggleSpeechSync);
   challengeBtnEl?.addEventListener("click", toggleChallengeMode);
   translationBtnEl?.addEventListener("click", toggleTranslationMode);
+  multipleChoiceBtnEl?.addEventListener("click", toggleMultipleChoiceMode);
   autoPlayBtnEl?.addEventListener("click", toggleAutoPlay);
   randomBtnEl?.addEventListener("click", toggleRandomMode);
   frequencyBtnEl?.addEventListener("click", toggleFrequencyMode);
@@ -560,6 +737,7 @@ function bindUIEvents() {
   prevWordBtnEl?.addEventListener("click", prevWord);
   nextWordBtnEl?.addEventListener("click", nextWord);
   speakWordBtnEl?.addEventListener("click", handleSpeakCurrentWord);
+  multipleChoiceOptionsEl?.addEventListener("click", handleMultipleChoiceOptionClick);
   document.querySelector(".center-box")?.addEventListener("click", handleAutoPlaySkipRequest);
 
   searchInputEl?.addEventListener("input", () => {
@@ -651,6 +829,7 @@ function loadSavedState() {
   const savedChallengeTime = safeGetItem(STORAGE_KEYS.challengeTime);
   const savedDisplayTime = safeGetItem(STORAGE_KEYS.displayTime);
   const savedTranslationMode = safeGetItem(STORAGE_KEYS.translationMode);
+  const savedMultipleChoiceMode = safeGetItem(STORAGE_KEYS.multipleChoiceMode);
   const savedAutoPlay = safeGetItem(STORAGE_KEYS.autoPlay);
   const savedRandomMode = safeGetItem(STORAGE_KEYS.randomMode);
   const savedFrequencyMode = safeGetItem(STORAGE_KEYS.frequencyMode);
@@ -724,6 +903,7 @@ function loadSavedState() {
   }
 
   if (savedTranslationMode !== null) translationMode = savedTranslationMode === "true";
+  if (savedMultipleChoiceMode !== null) multipleChoiceMode = savedMultipleChoiceMode === "true";
   if (savedAutoPlay !== null) saveAutoPlayState("off");
   if (savedRandomMode !== null) randomMode = savedRandomMode === "true";
   if (savedFrequencyMode !== null) frequencyMode = savedFrequencyMode === "true";
@@ -731,6 +911,7 @@ function loadSavedState() {
   updateSpeechSyncButton();
   updateChallengeButton();
   updateTranslationButton();
+  updateMultipleChoiceButton();
   updateAutoPlayButton();
   updateRandomButton();
   updateFrequencyButton();
@@ -978,7 +1159,7 @@ function applyWordOrder(resetIndex = false, preserveCurrentId = null) {
 
     if (!cacheValid) {
       wordOrderCache[cacheKey] = frequencyMode
-        ? sortByReviewScore(baseWords, (item) => getReviewScore(reviewScores, item), { randomizeTies: randomMode })
+        ? sortByReviewScore(baseWords, (item) => getReviewWeight(reviewScores, item), { randomizeTies: randomMode })
         : shuffleArray(baseWords);
     }
 
@@ -1063,6 +1244,10 @@ function updateTranslationButton() {
   uiUpdateTranslationButton(uiContext);
 }
 
+function updateMultipleChoiceButton() {
+  uiUpdateMultipleChoiceButton(uiContext);
+}
+
 function updateAutoPlayButton() {
   uiUpdateAutoPlayButton(uiContext);
   updateRecallTimeControl();
@@ -1132,6 +1317,7 @@ function waitForSpeechSyncActivation() {
 
 function speakCurrentWordForSpeechSync() {
   if (!speechSync) return;
+  if (multipleChoiceMode && !multipleChoiceAnswer) return;
   speechSyncWaitingForUserActivation = false;
   unbindSpeechSyncActivationEvents();
   clearSpeechSyncTimer();
@@ -1140,6 +1326,7 @@ function speakCurrentWordForSpeechSync() {
 
 function handleSpeechSyncActivation() {
   if (!speechSync || !speechSyncWaitingForUserActivation) return;
+  if (multipleChoiceMode && !multipleChoiceAnswer) return;
   speakCurrentWordForSpeechSync();
 }
 
@@ -1260,6 +1447,10 @@ function startAutoPlayFromCurrentWord() {
 }
 function scheduleSpeechSync() {
   if (!speechSync) return;
+  if (multipleChoiceMode && !multipleChoiceAnswer) {
+    clearSpeechSyncTimer();
+    return;
+  }
   if (!canStartSpeechSyncNow()) {
     waitForSpeechSyncActivation();
     return;
@@ -1394,9 +1585,27 @@ function toggleChallengeMode() {
 
 function toggleTranslationMode() {
   translationMode = !translationMode;
+  multipleChoiceQuestion = null;
+  multipleChoiceAnswer = null;
+  multipleChoiceRevealedOptionIndexes.clear();
   saveTranslationModeState(translationMode);
   updateTranslationButton();
   refreshCurrentWordAfterSettingChange();
+}
+
+function toggleMultipleChoiceMode() {
+  multipleChoiceMode = !multipleChoiceMode;
+  multipleChoiceQuestion = null;
+  multipleChoiceAnswer = null;
+  multipleChoiceRevealedOptionIndexes.clear();
+  saveMultipleChoiceModeState(multipleChoiceMode);
+  updateMultipleChoiceButton();
+
+  if (multipleChoiceMode && isAutoPlayActive()) {
+    stopAutoPlay();
+  }
+
+  renderCurrentWord();
 }
 
 function toggleAutoPlay() {

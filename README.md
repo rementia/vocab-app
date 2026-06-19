@@ -42,11 +42,13 @@ The public version is separated from the private study version so that demo user
 * Pronunciation feature
 * Auto-pronunciation mode
 * Random mode
+* 四択問題 mode with English-to-Japanese and Japanese-to-English questions
 * Favorite word management
 * Difficult word management
 * Favorite word list
 * Difficult word list
 * Recall mode with adjustable time
+* Review history that makes frequently missed words appear more often in frequency mode
 * Progress display
 * Keyboard shortcuts for PC
 * Responsive design for mobile devices
@@ -138,12 +140,15 @@ portfolio_tango_challenge_mode
 portfolio_tango_challenge_time
 portfolio_tango_display_time
 portfolio_tango_translation_mode
+portfolio_tango_multiple_choice_mode
 portfolio_tango_auto_play
 portfolio_tango_random_mode
 portfolio_tango_frequency_mode
 ```
 
 localStorage is used for browser-local state, such as the selected volume, current mode, word position, sidebar state, and local fallback data.
+
+四択問題 mode stores per-word correct and incorrect answer history in `portfolio_tango_review_scores`. Frequency mode uses that local review history so words answered incorrectly appear more often, while words with repeated correct answers appear slightly less often.
 
 ## Why Firestore and localStorage are separated
 

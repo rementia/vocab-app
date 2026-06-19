@@ -8,7 +8,8 @@ import {
   saveFavoritesToLocalOnly,
   saveDifficultsToLocalOnly,
   saveDifficultsUpdatedAt,
-  saveIndexByVol
+  saveIndexByVol,
+  saveMultipleChoiceModeState
 } from "../storage.js";
 
 function installMockStorage({ throwOnGet = false, throwOnSet = false } = {}) {
@@ -51,6 +52,9 @@ assert.strictEqual(values.get("portfolio_tango_challenge_time"), "1500", "saveCh
 
 saveDisplayTimeState(1800);
 assert.strictEqual(values.get("portfolio_tango_display_time"), "1800", "saveDisplayTimeState should store numbers as strings");
+
+saveMultipleChoiceModeState(true);
+assert.strictEqual(values.get("portfolio_tango_multiple_choice_mode"), "true", "saveMultipleChoiceModeState should store booleans as strings");
 
 installMockStorage({ throwOnGet: true });
 assert.doesNotThrow(() => safeGetItem("blocked"), "safeGetItem should swallow storage read errors");

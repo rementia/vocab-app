@@ -13,6 +13,7 @@ export const STORAGE_KEYS = {
   challengeTime: "portfolio_tango_challenge_time",
   displayTime: "portfolio_tango_display_time",
   translationMode: "portfolio_tango_translation_mode",
+  multipleChoiceMode: "portfolio_tango_multiple_choice_mode",
   autoPlay: "portfolio_tango_auto_play",
   randomMode: "portfolio_tango_random_mode",
   frequencyMode: "portfolio_tango_frequency_mode"
@@ -89,6 +90,10 @@ export function saveDisplayTimeState(value) {
 
 export function saveTranslationModeState(value) {
   safeSetItem(STORAGE_KEYS.translationMode, String(value));
+}
+
+export function saveMultipleChoiceModeState(value) {
+  safeSetItem(STORAGE_KEYS.multipleChoiceMode, String(value));
 }
 
 export function saveAutoPlayState(value) {

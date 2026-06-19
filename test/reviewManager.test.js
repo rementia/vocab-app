@@ -1,6 +1,9 @@
 import assert from "assert";
 import {
   getReviewScore,
+  getReviewStats,
+  getReviewWeight,
+  recordReviewAnswer,
   resetReviewScore,
   sortByReviewScore,
   updateReviewScore
@@ -19,6 +22,26 @@ assert.strictEqual(updateReviewScore(scores, item, -10), -5);
 assert.strictEqual(updateReviewScore(scores, item, 20), 5);
 assert.strictEqual(resetReviewScore(scores, item), 0);
 assert.strictEqual(getReviewScore(scores, item), 0);
+
+recordReviewAnswer(scores, item, true, 1000);
+assert.deepStrictEqual(
+  getReviewStats(scores, item),
+  { correct: 1, wrong: 0, streakCorrect: 1, streakWrong: 0, lastAnsweredAt: 1000 },
+  "correct answers should update correct stats"
+);
+recordReviewAnswer(scores, item, false, 2000);
+assert.deepStrictEqual(
+  getReviewStats(scores, item),
+  { correct: 1, wrong: 1, streakCorrect: 0, streakWrong: 1, lastAnsweredAt: 2000 },
+  "wrong answers should update wrong stats and reset correct streak"
+);
+assert.strictEqual(getReviewWeight(scores, item), 4.5, "wrong stats should increase frequency weight");
+recordReviewAnswer(scores, item, true, 3000);
+recordReviewAnswer(scores, item, true, 4000);
+assert.strictEqual(getReviewWeight(scores, item), 2, "correct streaks should reduce but not remove frequency weight");
+updateReviewScore(scores, item, 2);
+assert.strictEqual(resetReviewScore(scores, item), 0);
+assert.strictEqual(getReviewStats(scores, item).correct, 3, "manual score reset should keep answer stats");
 
 const scoredItems = [
   { id: "a" },
