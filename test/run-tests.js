@@ -3,6 +3,7 @@ const tests = [
   "./data.test.js",
   "./wordList.test.js",
   "./pronunciation.test.js",
+  "./multipleChoice.test.js",
   "./navigation.test.js",
   "./storage.test.js",
   "./favoritesManager.test.js",
