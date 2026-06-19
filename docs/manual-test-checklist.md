@@ -50,6 +50,23 @@ This checklist is used to confirm that the public portfolio version still works 
 * [ ] Button states match the current mode
 * [ ] The last selected mode is restored after reload
 
+## Multiple Choice Mode
+
+* [ ] 四択問題モードに切り替えられる
+* [ ] UI上の表示が「四択問題」になっている
+* [ ] 英→日で、問題文が英単語、選択肢が日本語訳になる
+* [ ] 日→英で、問題文が日本語訳、選択肢が英単語になる
+* [ ] 正解時に正解色・正解スタイルが表示される
+* [ ] 正解時に「正解」テキストが表示されない
+* [ ] 不正解時に不正解色と正解色が表示される
+* [ ] 回答後、不正解選択肢を再タップすると訳語に切り替わる
+* [ ] もう一度タップすると元の表示に戻る
+* [ ] 回答後に不正解選択肢を何度タップしても correct / wrong が再加算されない
+* [ ] 次の問題に進むと表示切替状態がリセットされる
+* [ ] `portfolio_tango_review_scores` に正誤履歴が保存される
+* [ ] reload 後も正誤履歴が復元される
+* [ ] frequency mode で不正解の多い単語が出やすくなる
+
 ## 6. Favorites
 
 * [ ] A word can be added to favorites
@@ -57,7 +74,6 @@ This checklist is used to confirm that the public portfolio version still works 
 * [ ] Favorite state is reflected in the UI
 * [ ] Favorites mode displays favorite words
 * [ ] Removing a favorite in favorites mode does not break the display
-* [ ] Favorites are saved to localStorage as fallback
 * [ ] When logged in, favorites are saved to Firestore `portfolioUsers/{uid}`
 
 ## 7. Difficult Words
@@ -67,7 +83,6 @@ This checklist is used to confirm that the public portfolio version still works 
 * [ ] Difficult state is reflected in the UI
 * [ ] Difficults mode displays difficult words
 * [ ] Removing a difficult word in difficults mode does not break the display
-* [ ] Difficult words are saved to localStorage as fallback
 * [ ] When logged in, difficult words are saved to Firestore `portfolioUsers/{uid}`
 
 ## 8. localStorage
@@ -77,12 +92,14 @@ This checklist is used to confirm that the public portfolio version still works 
 * [ ] `portfolio_tango_index_by_vol` is saved
 * [ ] `portfolio_tango_sidebar_open` is saved
 * [ ] `portfolio_tango_speech_sync` is saved
-* [ ] `portfolio_tango_favorites` is saved when needed
-* [ ] `portfolio_tango_difficults` is saved when needed
+* [ ] `portfolio_tango_review_scores` is saved
+* [ ] `portfolio_tango_multiple_choice_mode` is saved
 * [ ] Volume is restored after reload
 * [ ] Mode is restored after reload
 * [ ] Word position is restored after reload
 * [ ] UI state is restored after reload
+* [ ] Review scores are restored after reload
+* [ ] Multiple choice mode setting is restored after reload
 
 ## 9. Pronunciation
 

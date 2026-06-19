@@ -23,7 +23,7 @@ Browser UI state
 | -------------------------------- | -------------------------------- | ------------------- | ------------------------------------------------ |
 | Google Sheets CSV                | Sample vocabulary data           | Public demo app     | Provides demonstration vocabulary data           |
 | Firestore `portfolioUsers/{uid}` | User-specific learning data      | Same Google account | Saves favorites, difficult words, and timestamps |
-| localStorage                     | UI state and local fallback data | Same browser only   | Restores the previous browser state              |
+| localStorage                     | Browser-local UI state           | Same browser only   | Restores the previous browser state              |
 
 ## Overall Flow
 
@@ -38,7 +38,7 @@ Browser UI state
  │                               │
  ↓                               ↓
 [Firestore: portfolioUsers/{uid}] [localStorage]
-favorites, difficults             current volume, mode, UI state
+favorites, difficults             current volume, mode, UI state, review scores
 ```
 
 ## 1. Vocabulary Data Flow
@@ -115,11 +115,8 @@ portfolio_tango_current_mode
 portfolio_tango_index_by_vol
 portfolio_tango_sidebar_open
 portfolio_tango_speech_sync
-portfolio_tango_favorites
-portfolio_tango_favorites_updated_at
-portfolio_tango_difficults
-portfolio_tango_difficults_updated_at
 portfolio_tango_review_scores
+portfolio_tango_multiple_choice_mode
 portfolio_tango_challenge_mode
 portfolio_tango_challenge_time
 portfolio_tango_display_time
@@ -141,7 +138,27 @@ Examples:
 | `portfolio_tango_sidebar_open` | Restores the sidebar open/closed state             |
 | `portfolio_tango_speech_sync`  | Restores the auto-pronunciation state              |
 
-## 4. App Startup Flow
+## 4. Multiple Choice Review Flow
+
+In 四択問題 mode, the app records whether each answer was correct or incorrect as review scores / review stats in `portfolio_tango_review_scores`.
+
+Correct answer:
+
+* increases `correct`
+* increases `streakCorrect`
+* resets `streakWrong`
+* updates `lastAnsweredAt`
+
+Wrong answer:
+
+* increases `wrong`
+* increases `streakWrong`
+* resets `streakCorrect`
+* updates `lastAnsweredAt`
+
+Frequency mode uses these review scores to make words with more wrong answers appear more often. Words with repeated correct answers become slightly less frequent, but the weight has a lower bound so a word does not disappear completely.
+
+## 5. App Startup Flow
 
 When the app starts, the data is loaded in this general order.
 
@@ -155,7 +172,7 @@ When the app starts, the data is loaded in this general order.
 7. Render the current word and UI state
 ```
 
-## 5. Favorite Word Flow
+## 6. Favorite Word Flow
 
 When the user marks a word as favorite:
 
@@ -164,14 +181,12 @@ User clicks favorite button
   ↓
 Update favorite state in memory
   ↓
-Save local fallback data to localStorage
-  ↓
 If logged in, save to Firestore portfolioUsers/{uid}
   ↓
 Update favorite mode and UI
 ```
 
-## 6. Difficult Word Flow
+## 7. Difficult Word Flow
 
 When the user marks a word as difficult:
 
@@ -180,14 +195,12 @@ User clicks difficult button
   ↓
 Update difficult state in memory
   ↓
-Save local fallback data to localStorage
-  ↓
 If logged in, save to Firestore portfolioUsers/{uid}
   ↓
 Update difficult mode and UI
 ```
 
-## 7. Why this separation is used
+## 8. Why this separation is used
 
 Firestore and localStorage have different responsibilities.
 
@@ -195,10 +208,10 @@ Firestore and localStorage have different responsibilities.
 | -------- | ---------------------------- | ---------------------------- |
 | Location | Cloud database               | Browser storage              |
 | Sharing  | Same Google account          | Same browser only            |
-| Best for | Long-term user learning data | UI state and local fallback  |
+| Best for | Long-term user learning data | UI state and review history  |
 | Example  | favorites, difficults        | current volume, current mode |
 
-## 8. Summary for interviews
+## 9. Summary for interviews
 
 This app separates public demo data, account-based learning data, and browser-local UI state.
 

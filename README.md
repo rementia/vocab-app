@@ -80,7 +80,7 @@ This app separates data by purpose.
 | -------------------------------- | ---------------------------- | ------------------- | -------------------------------------------------------- |
 | Google Sheets CSV                | Sample vocabulary data       | Public demo app     | Provides small demo vocabulary data                      |
 | Firestore `portfolioUsers/{uid}` | User-specific learning data  | Same Google account | Saves favorites, difficult words, and related timestamps |
-| localStorage                     | UI state and local app state | Same browser only   | Restores the previous browser state                      |
+| localStorage                     | Browser-local UI state       | Same browser only   | Restores the previous browser state                      |
 
 ## Data Flow
 
@@ -131,10 +131,6 @@ portfolio_tango_current_mode
 portfolio_tango_index_by_vol
 portfolio_tango_sidebar_open
 portfolio_tango_speech_sync
-portfolio_tango_favorites
-portfolio_tango_favorites_updated_at
-portfolio_tango_difficults
-portfolio_tango_difficults_updated_at
 portfolio_tango_review_scores
 portfolio_tango_challenge_mode
 portfolio_tango_challenge_time
@@ -146,7 +142,7 @@ portfolio_tango_random_mode
 portfolio_tango_frequency_mode
 ```
 
-localStorage is used for browser-local state, such as the selected volume, current mode, word position, sidebar state, and local fallback data.
+localStorage is used for browser-local UI state, such as the selected volume, current mode, word position, sidebar state, display settings, and review history used by 四択問題 and frequency mode.
 
 四択問題 mode stores per-word correct and incorrect answer history in `portfolio_tango_review_scores`. Frequency mode uses that local review history so words answered incorrectly appear more often, while words with repeated correct answers appear slightly less often.
 
@@ -159,7 +155,7 @@ Firestore
 = account-based learning data
 
 localStorage
-= browser-based UI state and local fallback data
+= browser-based UI state
 ```
 
 Firestore is used for data that should be linked to a Google login and shared across devices for the same user.
@@ -185,15 +181,15 @@ This app can be used with or without Google login.
 
 ### When using without login
 
-If you do not log in, your learning state is saved only in the browser's localStorage.
+If you do not log in, the app can still display vocabulary and restore browser-local UI state through localStorage.
 
 Examples of locally saved data:
 
 * selected volume
 * current word position
 * app mode
-* local settings
-* local fallback favorites and difficult words
+* display settings
+* sidebar state
 
 This data stays only in the same browser and device. It is not shared across devices.
 
@@ -209,6 +205,8 @@ The app uses Cloud Firestore to save user-specific learning data, such as:
 * difficult words
 * last updated timestamps
 * user-specific app state used by the learning features
+
+User-specific learning data is saved under `portfolioUsers/{uid}`.
 
 This data is used only to provide the learning, favorite, and difficult word features of this app.
 
@@ -354,14 +352,15 @@ This app can be used with or without Google login.
 
 ### When using without login
 
-If you do not log in, your learning state is saved only in the browser's localStorage.
+If you do not log in, the app can still display vocabulary and restore browser-local UI state through localStorage.
 
 Examples of locally saved data:
 
 - selected volume
 - current word position
 - app mode
-- local settings
+- display settings
+- sidebar state
 
 This data stays only in the same browser and device.  
 It is not shared across devices.
@@ -375,10 +374,13 @@ When you log in, Firebase Authentication manages login information such as your 
 The app uses Cloud Firestore to save user-specific learning data, such as:
 
 - favorite words
-- last updated time
-- user-specific app state
+- difficult words
+- last updated timestamps
+- user-specific app state used by the learning features
 
-This data is used only to provide the learning and favorite features of this app.
+User-specific learning data is saved under `portfolioUsers/{uid}`.
+
+This data is used only to provide the learning, favorite, and difficult word features of this app.
 
 ### GitHub Pages and Firebase
 
