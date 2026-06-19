@@ -2,13 +2,6 @@
 
 A web-based vocabulary learning app focused on recall-based learning and efficient review.
 
-This app was created as a portfolio project to support English vocabulary learning through repeated recall, pronunciation practice, random review, and favorite word management.
-
-## Screenshots
-# English Vocabulary App
-
-A web-based vocabulary learning app focused on recall-based learning and efficient review.
-
 This app was created as a portfolio project to support English vocabulary learning through repeated recall, pronunciation practice, random review, favorite word management, and difficult word review.
 
 ## Screenshots
