@@ -47,25 +47,34 @@ The public version uses a small demo vocabulary dataset and separates its Firest
 ## Directory Structure
 
 ```txt
-app.js                App initialization and module wiring
-bootstrap.js          Startup entry point
-data.js               Google Sheets CSV fetching and parsing
-dom.js                DOM element lookup
-ui.js                 DOM rendering and button state updates
-events.js             Keyboard, touch, and viewport events
-storage.js            localStorage keys and safe storage helpers
-favorites.js          Firestore sync helpers for user learning data
-favoritesManager.js   Favorite word behavior
-difficultsManager.js  Difficult word behavior
-reviewManager.js      Review scores and review stats
-multipleChoice.js     四択問題 option generation
-wordOrderService.js   Random and frequency word ordering
-wordIdentity.js       Stable word key normalization
-wordList.js           Shared word-list helpers
-navigation.js         Word navigation history
-pronunciation.js      Pronunciation lookup and speech playback
-test/                 Node-based tests
-docs/                 Storage flow and manual test notes
+app.js                       App initialization and module wiring
+bootstrap.js                 Startup entry point
+data.js                      Google Sheets CSV fetching and parsing
+dom.js                       DOM element lookup
+ui.js                        DOM rendering and button state updates
+events.js                    Keyboard, touch, and viewport events
+storage.js                   localStorage keys and safe storage helpers
+savedStateController.js      Saved localStorage state restore and validation
+autoPlayController.js        Auto-play timers and playback flow
+speechSyncController.js      Pronunciation sync timers and user activation handling
+cloudSyncController.js       Authentication and Firestore sync orchestration
+favorites.js                 Firestore sync helpers for user learning data
+favoritesManager.js          Favorite word behavior
+difficultsManager.js         Difficult word behavior
+reviewManager.js             Review scores and review stats
+multipleChoice.js            四択問題 option generation
+wordOrderService.js          Random and frequency word ordering
+wordReloadService.js         Current word position handling after CSV reload
+reloadStatusService.js       Reload status messages and auto-clear timers
+wordIdentity.js              Stable word key normalization
+wordList.js                  Shared word-list helpers
+navigation.js                Word navigation history
+pronunciation.js             Pronunciation lookup and speech playback
+.github/workflows/test.yml   GitHub Actions workflow for npm test
+firestore.rules              Firestore access rules for portfolio user data
+package-lock.json            Locked npm dependency resolution for reproducible CI
+test/                        Node-based tests
+docs/                        Storage flow and manual test notes
 ```
 
 ## Data Flow
@@ -98,7 +107,7 @@ Browser-local UI state is restored from localStorage:
 localStorage portfolio_tango_*
 ```
 
-Vocabulary data is normally loaded from Google Sheets CSV when the app starts. After editing the spreadsheet, use the `単語データ再読み込み` button in the sidebar or reload the page to fetch the latest CSV. Favorites, difficult words, and review scores are tied to word IDs based on the English word, so changing the English word can make it behave like a different word; editing only the meaning is generally safer.
+Vocabulary data is normally loaded from Google Sheets CSV when the app starts. After editing the spreadsheet, use the `単語データ再読み込み` button in the sidebar or reload the page to fetch the latest CSV. Explicit reloads add a cache-busting query so the browser is less likely to reuse an old CSV response. Favorites, difficult words, and review scores are tied to word IDs based on the English word, so changing the English word can make it behave like a different word; editing only the meaning is generally safer.
 
 ## Public and Study Versions
 
@@ -208,15 +217,12 @@ GitHub Actions runs the same `npm test` command automatically on pushes to `main
 
 Current test coverage includes:
 
-* CSV parser and vocabulary mapping
-* word identity / word key normalization
-* word list helpers
-* random and frequency word ordering
-* multiple choice option generation
-* review score and review stats updates
-* localStorage key behavior
-* UI rendering helpers
-* keyboard shortcuts
+* data loading: CSV parsing, vocabulary mapping, word identity, and word list helpers
+* ordering and reload flow: random/frequency ordering, saved state restore, word reload index preservation, and reload status auto-clear
+* learning behavior: multiple choice, review scores, pronunciation helpers, navigation, and search
+* controllers: auto play, speech sync, and cloud sync
+* persistence and marks: storage, favorites manager, difficults manager, and review manager
+* UI behavior: rendering helpers, events, and keyboard shortcuts
 
 ## Security Notes
 
