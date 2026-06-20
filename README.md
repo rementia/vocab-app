@@ -200,6 +200,8 @@ npm test
 
 The tests use Node.js and the built-in `assert` module. No additional test framework is required.
 
+GitHub Actions runs the same `npm test` command automatically on pushes to `main`, pull requests targeting `main`, and manual `workflow_dispatch` runs. To run it manually on GitHub, open the Actions tab, select the `Test` workflow, and click `Run workflow`.
+
 Current test coverage includes:
 
 * CSV parser and vocabulary mapping
