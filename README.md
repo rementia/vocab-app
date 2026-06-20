@@ -96,6 +96,8 @@ Browser-local UI state is restored from localStorage:
 localStorage portfolio_tango_*
 ```
 
+Vocabulary data is normally loaded from Google Sheets CSV when the app starts. After editing the spreadsheet, use the `単語データ再読み込み` button in the sidebar or reload the page to fetch the latest CSV. Favorites, difficult words, and review scores are tied to word IDs based on the English word, so changing the English word can make it behave like a different word; editing only the meaning is generally safer.
+
 ## Public and Study Versions
 
 The public portfolio app and the private study app are intentionally separated.

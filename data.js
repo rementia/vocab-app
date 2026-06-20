@@ -15,6 +15,14 @@ const LEVEL_TO_VOL = {
 
 let wordsByVolCache = null;
 
+export function clearWordsCache() {
+  wordsByVolCache = null;
+}
+
+export function getSheetFetchUrl({ forceRefresh = false, cacheBust = Date.now() } = {}) {
+  return forceRefresh ? `${SHEET_URL}&_=${cacheBust}` : SHEET_URL;
+}
+
 export async function fetchWithRetry(url, retryCount = 1) {
   let lastError = null;
 
@@ -166,18 +174,19 @@ export function parseCsvToWords(text, volName) {
   return parseCsvToWordsByVol(text)[volName] || [];
 }
 
-async function fetchWordsByVol() {
-  if (wordsByVolCache) return wordsByVolCache;
+export async function fetchWordsByVol(options = {}) {
+  const { forceRefresh = false } = options;
+  if (!forceRefresh && wordsByVolCache) return wordsByVolCache;
 
-  const response = await fetchWithRetry(SHEET_URL, 1);
+  const response = await fetchWithRetry(getSheetFetchUrl({ forceRefresh }), 1);
   const text = await response.text();
   wordsByVolCache = parseCsvToWordsByVol(text);
 
   return wordsByVolCache;
 }
 
-export async function fetchWordsForVol(volName) {
-  const wordsByVol = await fetchWordsByVol();
+export async function fetchWordsForVol(volName, options = {}) {
+  const wordsByVol = await fetchWordsByVol(options);
   const words = wordsByVol[volName] || [];
   if (!words.length) {
     throw new Error(`No words parsed from CSV for ${volName}`);

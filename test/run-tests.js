@@ -3,6 +3,7 @@ const tests = [
   "./data.test.js",
   "./wordList.test.js",
   "./wordOrderService.test.js",
+  "./wordReloadService.test.js",
   "./savedStateController.test.js",
   "./pronunciation.test.js",
   "./autoPlayController.test.js",

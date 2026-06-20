@@ -1,5 +1,5 @@
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-import { fetchWordsForVol } from './data.js';
+import { fetchWordsByVol, fetchWordsForVol } from './data.js';
 import { getDomElements } from './dom.js';
 import { auth, db, provider } from './firebaseClient.js';
 import {
@@ -101,6 +101,7 @@ import {
   getMultipleChoiceDirection
 } from './multipleChoice.js';
 import { getNextSearchResultIndex } from './searchController.js';
+import { getReloadedIndex } from './wordReloadService.js';
 import {
   loadFavoritesFromCloudRemote,
   subscribeFavoritesRealtimeRemote,
@@ -113,6 +114,8 @@ import {
 } from './favorites.js';
 const {
   searchInputEl,
+  reloadWordsBtnEl,
+  reloadWordsStatusEl,
   listEl,
   sidebarEl,
   wordEl,
@@ -193,6 +196,7 @@ let favoritesVersion = 0;
 let difficultsVersion = 0;
 let reviewScoresVersion = 0;
 let searchQuery = "";
+let isReloadingWords = false;
 
 let indexByVol = createInitialIndexByVol();
 
@@ -761,6 +765,7 @@ function bindSearchEvents() {
     requestListRebuild();
     renderLayout();
   });
+  reloadWordsBtnEl?.addEventListener("click", handleReloadWords);
 }
 
 function bindTimeControlEvents() {
@@ -1018,6 +1023,67 @@ async function loadSheet(volName) {
 async function preloadOtherVolumesInBackground() {
   const otherVols = volOrder.filter((vol) => vol !== currentVol);
   await Promise.all(otherVols.map((vol) => ensureVolLoaded(vol).catch(() => {})));
+}
+
+function setReloadWordsStatus(message) {
+  if (reloadWordsStatusEl) reloadWordsStatusEl.textContent = message;
+}
+
+function setReloadWordsInProgress(isLoading) {
+  isReloadingWords = isLoading;
+  if (!reloadWordsBtnEl) return;
+  reloadWordsBtnEl.disabled = isLoading;
+  reloadWordsBtnEl.textContent = isLoading ? "再読み込み中..." : "単語データ再読み込み";
+}
+
+function hasAnyWordsByVol(wordsByVol) {
+  return volOrder.some((vol) => (wordsByVol[vol] || []).length > 0);
+}
+
+function resetMultipleChoiceState() {
+  multipleChoiceQuestion = null;
+  multipleChoiceAnswer = null;
+  multipleChoiceRevealedOptionIndexes.clear();
+}
+
+async function handleReloadWords() {
+  if (isReloadingWords) return;
+
+  const preserveWordId = getCurrentWord()?.id || null;
+  const previousIndex = index;
+
+  if (isAutoPlayActive()) {
+    stopAutoPlay();
+  }
+
+  setReloadWordsInProgress(true);
+  setReloadWordsStatus("単語データを再読み込みしています...");
+
+  try {
+    const refreshedWordsByVol = await fetchWordsByVol({ forceRefresh: true });
+    if (!hasAnyWordsByVol(refreshedWordsByVol)) {
+      throw new Error("No words parsed from refreshed CSV");
+    }
+    if (currentMode === "vol" && !(refreshedWordsByVol[currentVol] || []).length) {
+      throw new Error(`No words parsed from refreshed CSV for ${currentVol}`);
+    }
+
+    allWordsByVol = { ...createInitialWordsByVol(), ...refreshedWordsByVol };
+    clearWordOrderCache();
+    resetMultipleChoiceState();
+    applyWordOrder(false);
+    index = getReloadedIndex({ words, previousIndex, preserveWordId });
+    persistCurrentIndex();
+    requestListRebuild();
+    render();
+    scheduleSpeechSyncAfterRender();
+    setReloadWordsStatus("単語データを更新しました");
+  } catch (error) {
+    console.error("単語データの再読み込みに失敗しました:", error);
+    setReloadWordsStatus("単語データの再読み込みに失敗しました");
+  } finally {
+    setReloadWordsInProgress(false);
+  }
 }
 
 function applyWordOrder(resetIndex = false, preserveCurrentId = null) {

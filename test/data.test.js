@@ -1,5 +1,13 @@
 import assert from "assert";
-import { parseCsv, parseCsvToWords, parseCsvToWordsByVol } from "../data.js";
+import {
+  clearWordsCache,
+  fetchWordsByVol,
+  getSheetFetchUrl,
+  parseCsv,
+  parseCsvToWords,
+  parseCsvToWordsByVol,
+  SHEET_URL
+} from "../data.js";
 
 const sampleCsv = `\ufeffword,meaning\r\nhello,こんにちは\r\n"good,bye","さようなら"\r\n"quote""test",テスト\r\n`;
 
@@ -52,5 +60,39 @@ assert.deepStrictEqual(parsedLevelTwoWords, [
     sourceVol: "vol2"
   }
 ]);
+
+assert.strictEqual(getSheetFetchUrl(), SHEET_URL, "normal sheet URL should not add cache busting");
+assert.strictEqual(
+  getSheetFetchUrl({ forceRefresh: true, cacheBust: 123 }),
+  `${SHEET_URL}&_=123`,
+  "force refresh should add a cache-busting query parameter"
+);
+
+const originalFetch = globalThis.fetch;
+const fetchedUrls = [];
+globalThis.fetch = async (url) => {
+  fetchedUrls.push(String(url));
+  return {
+    ok: true,
+    text: async () => leveledCsv
+  };
+};
+
+try {
+  clearWordsCache();
+  await fetchWordsByVol();
+  await fetchWordsByVol();
+  assert.strictEqual(fetchedUrls.length, 1, "fetchWordsByVol should reuse cached data by default");
+
+  await fetchWordsByVol({ forceRefresh: true });
+  assert.strictEqual(fetchedUrls.length, 2, "force refresh should bypass cached data");
+  assert.strictEqual(fetchedUrls[1].includes("&_="), true, "force refresh should fetch with a cache-busting URL");
+
+  clearWordsCache();
+  await fetchWordsByVol();
+  assert.strictEqual(fetchedUrls.length, 3, "clearWordsCache should make the next load fetch again");
+} finally {
+  globalThis.fetch = originalFetch;
+}
 
 console.log("All data parser tests passed.");
