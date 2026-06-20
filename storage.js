@@ -19,11 +19,23 @@ export const STORAGE_KEYS = {
   frequencyMode: "portfolio_tango_frequency_mode"
 };
 
+let hasShownStorageWriteWarning = false;
+
+function notifyStorageWriteFailure() {
+  if (hasShownStorageWriteWarning) return;
+  hasShownStorageWriteWarning = true;
+
+  if (typeof window !== "undefined" && typeof window.alert === "function") {
+    window.alert("ブラウザ保存に失敗しました。表示は続行できますが、再読み込み後に一部の状態が復元されない可能性があります。");
+  }
+}
+
 export function safeSetItem(key, value) {
   try {
     localStorage.setItem(key, value);
   } catch (error) {
     console.warn(`localStorage write failed for ${key}:`, error);
+    notifyStorageWriteFailure();
   }
 }
 

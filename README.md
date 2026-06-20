@@ -1,12 +1,8 @@
 # English Vocabulary App
 
-A web-based vocabulary learning app focused on recall-based learning and efficient review.
+A browser-based English vocabulary learning app built as a portfolio project.
 
-This app was created as a portfolio project to support English vocabulary learning through repeated recall, pronunciation practice, random review, favorite word management, and difficult word review.
-
-## Screenshots
-
-![Main Screen](./images/main.png)
+The app focuses on recall-based learning and efficient review through pronunciation, random review, frequency-based review, favorites, difficult words, recall mode, and 四択問題 mode.
 
 ## Demo
 
@@ -14,73 +10,61 @@ https://rementia.github.io/vocab-app/
 
 ## Overview
 
-This app focuses on recall-based learning, rather than simple memorization, to improve long-term retention of English vocabulary.
-
-Users can practice recalling word meanings, listen to pronunciation, switch between vocabulary levels, register favorite words, mark difficult words, and review them later.
-
-For the public portfolio demo, the app uses a small sample vocabulary dataset prepared separately for demonstration purposes.
-
-## Public Version Design
-
 This repository is the public portfolio version of the vocabulary app.
 
-The public version is separated from the private study version so that demo users, sample vocabulary data, and browser storage do not mix with the private study environment.
+The app is a static frontend built with HTML, CSS, JavaScript, Firebase Authentication, Cloud Firestore, Google Sheets CSV, and GitHub Pages. It does not require a backend server or build step.
 
-| Area                      | Public portfolio version                             |
-| ------------------------- | ---------------------------------------------------- |
-| Repository                | `vocab-app`                                          |
-| Demo URL                  | GitHub Pages public demo                             |
-| Vocabulary data           | Google Sheets CSV sample dataset                     |
-| Firestore user collection | `portfolioUsers`                                     |
-| localStorage key prefix   | `portfolio_tango_`                                   |
-| Main purpose              | Portfolio presentation and safe public demonstration |
+The public version uses a small demo vocabulary dataset and separates its Firestore collection and localStorage prefix from the private study version.
 
-## Features
+## Main Features
 
-* Level-based learning: vol.1–4
-* English word and meaning display
-* Pronunciation feature
-* Auto-pronunciation mode
-* Random mode
-* 四択問題 mode with English-to-Japanese and Japanese-to-English questions
-* Favorite word management
-* Difficult word management
-* Favorite word list
-* Difficult word list
-* Recall mode with adjustable time
-* Review history that makes frequently missed words appear more often in frequency mode
-* Progress display
-* Keyboard shortcuts for PC
-* Responsive design for mobile devices
-* Google login for cloud-based user data storage
+* Level-based vocabulary display: vol.1-vol.4
+* English word and Japanese meaning display
+* Pronunciation and pronunciation sync
+* Auto-play review
+* Random order review
+* Frequency order review
+* Recall learning mode
+* 四択問題 mode for English-to-Japanese and Japanese-to-English practice
+* Per-word review scores and answer stats
+* Favorite words and difficult words after Google login
+* Search and keyboard shortcuts
+* Responsive layout for desktop and mobile
 
 ## Technologies
 
 * HTML
 * CSS
-* JavaScript
+* JavaScript modules
 * Firebase Authentication
 * Cloud Firestore
-* Google Sheets
+* Google Sheets CSV export
 * GitHub Pages
+* Node.js test runner
 
-## Data Management
+## Directory Structure
 
-The public demo uses a dedicated sample vocabulary sheet.
-
-Vocabulary data is loaded from a Google Sheets CSV export URL. The demo sheet uses `word`, `meaning`, and `level` columns, and the app maps `level` values 1-4 to vol.1-vol.4.
-
-Only demonstration data is included in this public version. The dataset is intentionally kept small to avoid reproducing any specific commercial textbook, word list, example sentences, translations, ordering, or classification.
-
-## Storage Design
-
-This app separates data by purpose.
-
-| Storage                          | Data                         | Scope               | Purpose                                                  |
-| -------------------------------- | ---------------------------- | ------------------- | -------------------------------------------------------- |
-| Google Sheets CSV                | Sample vocabulary data       | Public demo app     | Provides small demo vocabulary data                      |
-| Firestore `portfolioUsers/{uid}` | User-specific learning data  | Same Google account | Saves favorites, difficult words, and related timestamps |
-| localStorage                     | Browser-local UI state       | Same browser only   | Restores the previous browser state                      |
+```txt
+app.js                App initialization and module wiring
+bootstrap.js          Startup entry point
+data.js               Google Sheets CSV fetching and parsing
+dom.js                DOM element lookup
+ui.js                 DOM rendering and button state updates
+events.js             Keyboard, touch, and viewport events
+storage.js            localStorage keys and safe storage helpers
+favorites.js          Firestore sync helpers for user learning data
+favoritesManager.js   Favorite word behavior
+difficultsManager.js  Difficult word behavior
+reviewManager.js      Review scores and review stats
+multipleChoice.js     四択問題 option generation
+wordOrderService.js   Random and frequency word ordering
+wordIdentity.js       Stable word key normalization
+wordList.js           Shared word-list helpers
+navigation.js         Word navigation history
+pronunciation.js      Pronunciation lookup and speech playback
+test/                 Node-based tests
+docs/                 Storage flow and manual test notes
+```
 
 ## Data Flow
 
@@ -89,315 +73,152 @@ Google Sheets
   ↓
 CSV export
   ↓
-Web App
+JavaScript fetch
   ↓
-Cloud Firestore: portfolioUsers/{uid}
+CSV parser
+  ↓
+Browser UI
 ```
 
-## Firestore Design
+Logged-in user learning data is stored separately:
 
-The public version uses the following Firestore collection for logged-in user data.
+```txt
+Firebase Authentication
+  ↓
+uid
+  ↓
+Cloud Firestore portfolioUsers/{uid}
+```
+
+Browser-local UI state is restored from localStorage:
+
+```txt
+localStorage portfolio_tango_*
+```
+
+## Public and Study Versions
+
+The public portfolio app and the private study app are intentionally separated.
+
+| Area                      | Public portfolio version |
+| ------------------------- | ------------------------ |
+| Repository                | `vocab-app`              |
+| Demo hosting              | GitHub Pages             |
+| Vocabulary data           | Google Sheets CSV demo data |
+| Firestore user collection | `portfolioUsers/{uid}`   |
+| localStorage prefix       | `portfolio_tango_`       |
+
+This separation prevents demo users, sample vocabulary data, Firestore documents, and browser-local state from mixing with the private study environment.
+
+## Firebase Authentication and Firestore
+
+Google login is handled by Firebase Authentication.
+
+After login, the app uses the Firebase UID to read and write user-specific learning data under:
 
 ```txt
 portfolioUsers/{uid}
 ```
 
-Example structure:
+Firestore stores user learning data such as:
 
-```txt
-portfolioUsers
-└─ {uid}
-   ├─ favorites
-   ├─ favoritesUpdatedAt
-   ├─ difficults
-   └─ difficultsUpdatedAt
-```
+* favorites
+* favoritesUpdatedAt
+* difficults
+* difficultsUpdatedAt
 
-This keeps public portfolio demo user data separate from the private study version.
+Firestore Security Rules should restrict each `portfolioUsers/{uid}` document to the matching authenticated user. This repository includes `firestore.rules` as the intended rule set for the public version.
 
-## localStorage Design
+## Firebase API Key
 
-The public version uses the following localStorage key prefix.
+The Firebase Web API key in `firebaseClient.js` is part of the public client configuration. For Firebase web apps, this API key is not a secret key by itself.
+
+The important protection is Firestore Security Rules and Firebase Authentication. The API key identifies the Firebase project, while the rules decide which authenticated users can read or write protected data.
+
+## localStorage
+
+Without login, the app can still display vocabulary and restore browser-local UI state in the same browser.
+
+The public version uses this prefix:
 
 ```txt
 portfolio_tango_
 ```
 
-Main localStorage keys:
-
-```txt
-portfolio_tango_current_vol
-portfolio_tango_current_mode
-portfolio_tango_index_by_vol
-portfolio_tango_sidebar_open
-portfolio_tango_speech_sync
-portfolio_tango_review_scores
-portfolio_tango_challenge_mode
-portfolio_tango_challenge_time
-portfolio_tango_display_time
-portfolio_tango_translation_mode
-portfolio_tango_multiple_choice_mode
-portfolio_tango_auto_play
-portfolio_tango_random_mode
-portfolio_tango_frequency_mode
-```
-
-localStorage is used for browser-local UI state, such as the selected volume, current mode, word position, sidebar state, display settings, and review history used by 四択問題 and frequency mode.
-
-四択問題 mode stores per-word correct and incorrect answer history in `portfolio_tango_review_scores`. Frequency mode uses that local review history so words answered incorrectly appear more often, while words with repeated correct answers appear slightly less often.
-
-## Why Firestore and localStorage are separated
-
-Firestore and localStorage have different roles.
-
-```txt
-Firestore
-= account-based learning data
-
-localStorage
-= browser-based UI state
-```
-
-Firestore is used for data that should be linked to a Google login and shared across devices for the same user.
-
-localStorage is used for data that only needs to be restored in the same browser.
-
-This separation makes the public portfolio version easier to explain, safer to demonstrate, and less likely to conflict with the private study version.
-
-## Key Design Ideas
-
-This app is designed with the following principles:
-
-* Treat vocabulary as connected meanings rather than isolated translations
-* Improve retention through repeated recall
-* Encourage active recall before checking the meaning
-* Make review more efficient by focusing on favorite and difficult words
-* Keep the interface simple and usable on both PC and mobile devices
-* Separate public demo data from private study data
-
-## Login and Data Storage
-
-This app can be used with or without Google login.
-
-### When using without login
-
-If you do not log in, the app can still display vocabulary and restore browser-local UI state through localStorage.
-
-Examples of locally saved data:
+Main localStorage data:
 
 * selected volume
-* current word position
-* app mode
-* display settings
+* current mode
+* word position by volume
 * sidebar state
+* pronunciation sync setting
+* recall and display time settings
+* translation mode
+* 四択問題 mode setting
+* auto-play, random mode, and frequency mode settings
+* review scores / review stats used by 四択問題 and frequency mode
 
-This data stays only in the same browser and device. It is not shared across devices.
+User-specific learning data such as favorites and difficult words is available after Google login and is saved to Firestore under `portfolioUsers/{uid}`.
 
-### When using Google login
+## Review Scores
 
-Google login is used through Firebase Authentication.
+四択問題 mode records answer stats per word.
 
-When you log in, Firebase Authentication manages login information such as your user ID and email address.
+Correct answers:
 
-The app uses Cloud Firestore to save user-specific learning data, such as:
+* increase `correct`
+* increase `streakCorrect`
+* reset `streakWrong`
+* update `lastAnsweredAt`
 
-* favorite words
-* difficult words
-* last updated timestamps
-* user-specific app state used by the learning features
+Wrong answers:
 
-User-specific learning data is saved under `portfolioUsers/{uid}`.
+* increase `wrong`
+* increase `streakWrong`
+* reset `streakCorrect`
+* update `lastAnsweredAt`
 
-This data is used only to provide the learning, favorite, and difficult word features of this app.
+Frequency mode uses these stats so words with more wrong answers appear more often, while words with repeated correct answers become slightly less frequent. A lower bound keeps every word eligible for review.
 
-### GitHub Pages and Firebase
+## Error Handling
 
-This app is hosted on GitHub Pages, but Google login is handled by Firebase Authentication.
+The app keeps local features usable when possible.
 
-Logging in to this app is different from logging in to GitHub.
+* CSV fetch failure shows a loading error.
+* Empty CSV results are treated as load failures for that volume.
+* Firebase login failure shows an error message.
+* Firestore sync failure shows a non-blocking warning and keeps the local UI usable.
+* localStorage write failure shows a non-blocking warning and continues the current session.
 
-GitHub does not manage your app login data.
+## Testing
 
-### Authorized domains
+Run the test suite with:
 
-For Google login to work on GitHub Pages, the GitHub Pages domain must be added to the Firebase Authentication authorized domains list.
-
-Example:
-
-```txt
-your-username.github.io
+```bash
+npm test
 ```
 
-## Docs
+The tests use Node.js and the built-in `assert` module. No additional test framework is required.
 
-* [Storage Flow](docs/storage-flow.md)
-* [Manual Test Checklist](docs/manual-test-checklist.md)
+Current test coverage includes:
 
-## Copyright Notice
+* CSV parser and vocabulary mapping
+* word identity / word key normalization
+* word list helpers
+* random and frequency word ordering
+* multiple choice option generation
+* review score and review stats updates
+* localStorage key behavior
+* UI rendering helpers
+* keyboard shortcuts
 
-This project is intended for portfolio and learning purposes.
-
-The public demo uses a small, independently prepared sample vocabulary dataset. It is not intended to reproduce any specific commercial textbook, word list, example sentences, translations, ordering, or classification.
-
-English words themselves are general language information, but the selection, ordering, translations, examples, and classification of commercial learning materials may require careful handling. For that reason, this public version uses demo data prepared separately for safe presentation.
-
-## Privacy Notice
-
-This app uses Firebase Authentication for Google login and Cloud Firestore to save user-specific learning data.
-
-When a user signs in with Google, Firebase Authentication may manage login-related information such as the user's UID and email address.
-
-Cloud Firestore stores the following user-specific data:
-
-* Firebase Authentication UID
-* Favorite word data
-* Difficult word data
-* Last updated timestamps for learning data
-
-This data is used only to provide the learning features and to save user-specific learning data. It is not used for advertising, sold to third parties, or used for purposes unrelated to this app.
-
-### プライバシーについて
-
-このアプリでは、Googleログイン機能に Firebase Authentication を使用しています。
-
-ログイン時に、Firebase Authentication 上でユーザーID（UID）およびメールアドレスなどのログイン情報が管理される場合があります。
-
-Firestoreには、ログインユーザーごとのお気に入り情報、苦手単語情報、更新日時を保存します。
-
-これらの情報は、お気に入り機能、苦手単語機能、および学習状態の保存のためにのみ使用し、広告配信・第三者販売・目的外利用には使用しません。
-
-## Future Improvements
-
-* Improve mobile landscape layout
-* Add detailed learning history
-* Track correct and incorrect answers
-* Improve weak-word review mode
-* Improve progress visualization
-* Add pronunciation cache
-
-## Author
-
-Anonymous
-
-![Main Screen](./images/main.png)
-
-## Demo
-
-https://rementia.github.io/vocab-app/
-
-## Overview
-
-This app focuses on recall-based learning, rather than simple memorization, to improve long-term retention of English vocabulary.
-
-Users can practice recalling word meanings, listen to pronunciation, switch between vocabulary levels, register difficult words as favorites, and review them later.
-
-For the public portfolio demo, the app uses a small sample vocabulary dataset prepared separately for demonstration purposes.
-
-## Features
-
-- Level-based learning: vol.1–4
-- English word and meaning display
-- Pronunciation feature
-- Auto-pronunciation mode
-- Random mode
-- Favorite word management
-- Favorite word list
-- Recall mode with adjustable time
-- Progress display
-- Keyboard shortcuts for PC
-- Responsive design for mobile devices
-- Google login for cloud-based favorite storage
-
-## Technologies
-
-- HTML
-- CSS
-- JavaScript
-- Firebase Authentication
-- Cloud Firestore
-- Google Sheets
-- GitHub Pages
-
-## Data Management
-
-The public demo uses a dedicated sample vocabulary sheet.
-
-Vocabulary data is loaded from a Google Sheets CSV export URL. The demo sheet uses `word`, `meaning`, and `level` columns, and the app maps `level` values 1-4 to vol.1-vol.4. Only demonstration data is included in this public version, and the dataset is intentionally kept small to avoid reproducing any specific commercial textbook or word list.
-
-Favorite words are saved separately in Cloud Firestore for each logged-in user.
-
-Data flow:
-
-Google Sheets  
-↓  
-CSV export  
-↓  
-Web App  
-↓  
-Cloud Firestore for favorites
-
-## Key Design Ideas
-
-This app is designed with the following principles:
-
-- Treat vocabulary as connected meanings rather than isolated translations
-- Improve retention through spaced recall
-- Encourage active recall before checking the meaning
-- Make review more efficient by focusing on difficult words
-- Keep the interface simple and usable on both PC and mobile devices
-
-## Login and Data Storage
-
-This app can be used with or without Google login.
-
-### When using without login
-
-If you do not log in, the app can still display vocabulary and restore browser-local UI state through localStorage.
-
-Examples of locally saved data:
-
-- selected volume
-- current word position
-- app mode
-- display settings
-- sidebar state
-
-This data stays only in the same browser and device.  
-It is not shared across devices.
-
-### When using Google login
-
-Google login is used through Firebase Authentication.
-
-When you log in, Firebase Authentication manages login information such as your user ID and email address.
-
-The app uses Cloud Firestore to save user-specific learning data, such as:
-
-- favorite words
-- difficult words
-- last updated timestamps
-- user-specific app state used by the learning features
-
-User-specific learning data is saved under `portfolioUsers/{uid}`.
-
-This data is used only to provide the learning, favorite, and difficult word features of this app.
-
-### GitHub Pages and Firebase
+## Security Notes
 
 This app is hosted on GitHub Pages, but Google login is handled by Firebase Authentication.
 
-Logging in to this app is different from logging in to GitHub.
+Logging in to this app is different from logging in to GitHub. GitHub does not manage the app's user data.
 
-GitHub does not manage your app login data.
-
-### Authorized domains
-
-For Google login to work on GitHub Pages, the GitHub Pages domain must be added to the Firebase Authentication authorized domains list.
-
-Example:
-
-```text
-your-username.github.io
+For deployment, the GitHub Pages domain must be added to Firebase Authentication authorized domains.
 
 ## Copyright Notice
 
@@ -405,38 +226,13 @@ This project is intended for portfolio and learning purposes.
 
 The public demo uses a small, independently prepared sample vocabulary dataset. It is not intended to reproduce any specific commercial textbook, word list, example sentences, translations, ordering, or classification.
 
-English words themselves are general language information, but the selection, ordering, translations, examples, and classification of commercial learning materials may require careful handling. For that reason, this public version uses demo data prepared separately for safe presentation.
-
-## Privacy Notice
-
-This app uses Firebase Authentication for Google login and Cloud Firestore to save user-specific favorite word data.
-
-When a user signs in with Google, Firebase Authentication may manage login-related information such as the user's UID and email address.
-
-Cloud Firestore stores the following user-specific data:
-
-- Firebase Authentication UID
-- Favorite word data
-- Last updated timestamp for favorite data
-
-This data is used only to provide the favorite word feature and to save user-specific learning data.  
-It is not used for advertising, sold to third parties, or used for purposes unrelated to this app.
-
-### プライバシーについて
-
-このアプリでは、Googleログイン機能に Firebase Authentication を使用しています。  
-ログイン時に、Firebase Authentication 上でユーザーID（UID）およびメールアドレスなどのログイン情報が管理される場合があります。
-
-Firestoreには、ログインユーザーごとのお気に入り情報と更新日時を保存します。  
-これらの情報は、お気に入り機能および学習状態の保存のためにのみ使用し、広告配信・第三者販売・目的外利用には使用しません。
-
 ## Future Improvements
 
-- Improve mobile landscape layout
-- Add detailed learning history
-- Track correct and incorrect answers
-- Add weak-word review mode
-- Improve progress visualization
+* Continue reducing `app.js` responsibilities into small controller modules
+* Improve non-blocking error messages with an in-page status area
+* Add more detailed learning history
+* Improve progress visualization
+* Expand UI tests for mobile layout-sensitive behavior
 
 ## Author
 

@@ -65,10 +65,14 @@ import {
   getReviewWeight,
   recordReviewAnswer,
   updateReviewScore,
-  resetReviewScore,
-  sortByReviewScore
+  resetReviewScore
 } from './reviewManager.js';
 import { clampIndex } from './wordList.js';
+import {
+  getOrderedWords,
+  getWordOrderMode,
+  makeWordOrderCacheKey
+} from './wordOrderService.js';
 import { normalizeWordRecordMap } from './wordIdentity.js';
 import {
   bindKeyboardEvents,
@@ -95,6 +99,7 @@ import {
   buildMultipleChoiceQuestion,
   getMultipleChoiceDirection
 } from './multipleChoice.js';
+import { getNextSearchResultIndex } from './searchController.js';
 import {
   loadFavoritesFromCloudRemote,
   subscribeFavoritesRealtimeRemote,
@@ -185,6 +190,7 @@ let autoPlayDisplayPhaseTimer = null;
 let autoPlayWaitStartedAt = 0;
 let wordOrderUpdatePending = false;
 let hasFinishedInitialLoading = false;
+let hasShownCloudSyncWarning = false;
 let multipleChoiceQuestion = null;
 let multipleChoiceAnswer = null;
 let multipleChoiceRevealedOptionIndexes = new Set();
@@ -728,6 +734,12 @@ function bindUIEvents() {
   });
 }
 
+function notifyCloudSyncFailure() {
+  if (hasShownCloudSyncWarning) return;
+  hasShownCloudSyncWarning = true;
+  alert("クラウド同期に失敗しました。ローカル表示は継続します。通信状態やログイン状態を確認してください。");
+}
+
 function setSecondsSliderValue(slider, label, milliseconds) {
   const seconds = Math.min(milliseconds / 1000, Number(slider.max));
   slider.value = seconds;
@@ -931,6 +943,9 @@ function subscribeFavoritesRealtime() {
     render();
     scheduleSpeechSyncAfterRender();
     scheduleAutoPlayAfterRender();
+  }, (error) => {
+    console.error("クラウド購読失敗:", error);
+    notifyCloudSyncFailure();
   });
 }
 
@@ -953,6 +968,7 @@ async function loadFavoritesFromCloud() {
     saveFavoritesUpdatedAt(favoritesUpdatedAt);
   } catch (error) {
     console.error("クラウド読み込み失敗:", error);
+    notifyCloudSyncFailure();
   }
 }
 
@@ -975,6 +991,7 @@ async function loadDifficultsFromCloud() {
     saveDifficultsUpdatedAt(difficultsUpdatedAt);
   } catch (error) {
     console.error("クラウド読み込み失敗:", error);
+    notifyCloudSyncFailure();
   }
 }
 
@@ -985,6 +1002,7 @@ async function saveFavoritesToCloud() {
     await saveFavoritesToCloudRemote(db, FAVORITES_COLLECTION, currentUser.uid, favorites, favoritesUpdatedAt);
   } catch (error) {
     console.error("クラウド保存失敗:", error);
+    notifyCloudSyncFailure();
   }
 }
 
@@ -995,6 +1013,7 @@ async function saveDifficultsToCloud() {
     await saveDifficultsToCloudRemote(db, FAVORITES_COLLECTION, currentUser.uid, difficults, difficultsUpdatedAt);
   } catch (error) {
     console.error("クラウド保存失敗:", error);
+    notifyCloudSyncFailure();
   }
 }
 
@@ -1055,24 +1074,6 @@ async function preloadOtherVolumesInBackground() {
   await Promise.all(otherVols.map((vol) => ensureVolLoaded(vol).catch(() => {})));
 }
 
-function makeWordOrderCacheKey(orderMode) {
-  const scope = currentMode === "favorites"
-    ? "favorites:all"
-    : currentMode === "difficults"
-      ? "difficults:all"
-      : `vol:${currentVol}`;
-  return `${orderMode}:${scope}`;
-}
-
-function shuffleArray(array) {
-  const copied = [...array];
-  for (let i = copied.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copied[i], copied[j]] = [copied[j], copied[i]];
-  }
-  return copied;
-}
-
 function applyWordOrder(resetIndex = false, preserveCurrentId = null) {
   const baseWords = currentMode === "favorites"
     ? buildFavoriteEntries(allWordsByVol, volOrder, favorites)
@@ -1080,30 +1081,15 @@ function applyWordOrder(resetIndex = false, preserveCurrentId = null) {
       ? buildDifficultEntries(allWordsByVol, volOrder, difficults)
       : [...(allWordsByVol[currentVol] || [])];
 
-  if (randomMode || frequencyMode) {
-    const orderMode = randomMode && frequencyMode
-      ? "frequency-random"
-      : frequencyMode
-        ? "frequency"
-        : "random";
-    const cacheKey = makeWordOrderCacheKey(orderMode);
-    const currentCache = wordOrderCache[cacheKey];
-
-    const cacheValid =
-      Array.isArray(currentCache) &&
-      currentCache.length === baseWords.length &&
-      currentCache.every((item) => baseWords.some((base) => base.id === item.id));
-
-    if (!cacheValid) {
-      wordOrderCache[cacheKey] = frequencyMode
-        ? sortByReviewScore(baseWords, (item) => getReviewWeight(reviewScores, item), { randomizeTies: randomMode })
-        : shuffleArray(baseWords);
-    }
-
-    words = wordOrderCache[cacheKey];
-  } else {
-    words = baseWords;
-  }
+  const orderMode = getWordOrderMode({ randomMode, frequencyMode });
+  const cacheKey = orderMode ? makeWordOrderCacheKey({ orderMode, currentMode, currentVol }) : "";
+  words = getOrderedWords({
+    baseWords,
+    orderMode,
+    cache: wordOrderCache,
+    cacheKey,
+    getWeight: (item) => getReviewWeight(reviewScores, item)
+  });
 
   if (preserveCurrentId) {
     const preservedIndex = words.findIndex((item) => item && item.id === preserveCurrentId);
@@ -1442,20 +1428,14 @@ function getSearchResultItems() {
     .filter((item) => item instanceof HTMLElement);
 }
 
-function getNextSearchResultItem(resultItems, direction) {
-  const activeResultIndex = resultItems.findIndex((item) => Number(item.dataset.index) === index);
-  const fallbackIndex = direction > 0 ? 0 : resultItems.length - 1;
-  const nextResultIndex = activeResultIndex >= 0
-    ? (activeResultIndex + direction + resultItems.length) % resultItems.length
-    : fallbackIndex;
-  return resultItems[nextResultIndex];
-}
-
 function moveToSearchResult(direction) {
   const resultItems = getSearchResultItems();
   if (!resultItems.length) return;
 
-  const nextIndex = readWordItemIndex(getNextSearchResultItem(resultItems, direction));
+  const resultIndexes = resultItems
+    .map(readWordItemIndex)
+    .filter((itemIndex) => itemIndex !== null);
+  const nextIndex = getNextSearchResultIndex({ resultIndexes, currentIndex: index, direction });
   if (nextIndex === null) return;
 
   navMoveToIndex(nextIndex, { pushHistory: true });

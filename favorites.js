@@ -13,9 +13,9 @@ export async function loadFavoritesFromCloudRemote(db, collectionName, userUid) 
   }
 }
 
-export function subscribeFavoritesRealtimeRemote(db, collectionName, userUid, onChange) {
+export function subscribeFavoritesRealtimeRemote(db, collectionName, userUid, onChange, onError) {
   const ref = doc(db, collectionName, userUid);
-  return onSnapshot(ref, (snap) => onChange(snap));
+  return onSnapshot(ref, (snap) => onChange(snap), onError);
 }
 
 export async function saveFavoritesToCloudRemote(db, collectionName, userUid, favorites, favoritesUpdatedAt) {
