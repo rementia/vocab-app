@@ -102,6 +102,7 @@ import {
 } from './multipleChoice.js';
 import { getNextSearchResultIndex } from './searchController.js';
 import { getReloadedIndex } from './wordReloadService.js';
+import { createReloadStatusController } from './reloadStatusService.js';
 import {
   loadFavoritesFromCloudRemote,
   subscribeFavoritesRealtimeRemote,
@@ -199,6 +200,14 @@ let searchQuery = "";
 let isReloadingWords = false;
 
 let indexByVol = createInitialIndexByVol();
+
+const reloadWordsStatus = createReloadStatusController({
+  setStatus: (message) => {
+    if (reloadWordsStatusEl) reloadWordsStatusEl.textContent = message;
+  },
+  setTimeoutFn: window.setTimeout.bind(window),
+  clearTimeoutFn: window.clearTimeout.bind(window)
+});
 
 const SPEECH_SYNC_DELAY_MS = 260;
 
@@ -1025,8 +1034,8 @@ async function preloadOtherVolumesInBackground() {
   await Promise.all(otherVols.map((vol) => ensureVolLoaded(vol).catch(() => {})));
 }
 
-function setReloadWordsStatus(message) {
-  if (reloadWordsStatusEl) reloadWordsStatusEl.textContent = message;
+function setReloadWordsStatus(message, options) {
+  reloadWordsStatus.set(message, options);
 }
 
 function setReloadWordsInProgress(isLoading) {
@@ -1077,7 +1086,7 @@ async function handleReloadWords() {
     requestListRebuild();
     render();
     scheduleSpeechSyncAfterRender();
-    setReloadWordsStatus("単語データを更新しました");
+    setReloadWordsStatus("単語データを更新しました", { clearAfterMs: 4000 });
   } catch (error) {
     console.error("単語データの再読み込みに失敗しました:", error);
     setReloadWordsStatus("単語データの再読み込みに失敗しました");

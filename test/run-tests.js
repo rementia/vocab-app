@@ -4,6 +4,7 @@ const tests = [
   "./wordList.test.js",
   "./wordOrderService.test.js",
   "./wordReloadService.test.js",
+  "./reloadStatusService.test.js",
   "./savedStateController.test.js",
   "./pronunciation.test.js",
   "./autoPlayController.test.js",

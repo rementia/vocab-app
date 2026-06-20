@@ -1,5 +1,7 @@
 # English Vocabulary App
 
+[![Test](https://github.com/rementia/vocab-app/actions/workflows/test.yml/badge.svg)](https://github.com/rementia/vocab-app/actions/workflows/test.yml)
+
 A browser-based English vocabulary learning app built as a portfolio project.
 
 The app focuses on recall-based learning and efficient review through pronunciation, random review, frequency-based review, favorites, difficult words, recall mode, and 四択問題 mode.
@@ -202,7 +204,7 @@ npm test
 
 The tests use Node.js and the built-in `assert` module. No additional test framework is required.
 
-GitHub Actions runs the same `npm test` command automatically on pushes to `main`, pull requests targeting `main`, and manual `workflow_dispatch` runs. To run it manually on GitHub, open the Actions tab, select the `Test` workflow, and click `Run workflow`.
+GitHub Actions runs the same `npm test` command automatically on pushes to `main`, pull requests targeting `main`, and manual `workflow_dispatch` runs. CI uses `npm ci` to reproduce dependencies from `package-lock.json`. The badge at the top of this README shows the current `Test` workflow status. To run it manually on GitHub, open the Actions tab, select the `Test` workflow, and click `Run workflow`.
 
 Current test coverage includes:
 
