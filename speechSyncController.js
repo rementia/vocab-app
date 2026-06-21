@@ -27,6 +27,8 @@ export function createSpeechSyncController({
     if (activationEventsBound || typeof document === "undefined") return;
     activationEventsBound = true;
     document.addEventListener("pointerdown", handleActivation, true);
+    document.addEventListener("touchstart", handleActivation, true);
+    document.addEventListener("click", handleActivation, true);
     document.addEventListener("keydown", handleActivation, true);
   }
 
@@ -34,6 +36,8 @@ export function createSpeechSyncController({
     if (!activationEventsBound || typeof document === "undefined") return;
     activationEventsBound = false;
     document.removeEventListener("pointerdown", handleActivation, true);
+    document.removeEventListener("touchstart", handleActivation, true);
+    document.removeEventListener("click", handleActivation, true);
     document.removeEventListener("keydown", handleActivation, true);
   }
 

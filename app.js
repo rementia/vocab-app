@@ -123,6 +123,8 @@ const {
   meaningEl,
   progressEl,
   pronunciationEl,
+  audioUnlockPromptEl,
+  audioUnlockBtnEl,
   prevHintEl,
   nextHintEl,
   currentEl,
@@ -384,7 +386,12 @@ async function init() {
     toggleRandomMode
   });
   setupAuthListener();
-  initPronunciation({ el: pronunciationEl, getCurrentWord });
+  initPronunciation({
+    el: pronunciationEl,
+    audioUnlockPrompt: audioUnlockPromptEl,
+    audioUnlockButton: audioUnlockBtnEl,
+    getCurrentWord
+  });
   updateSpeechButtonAvailability(speakWordBtnEl);
 
   window.addEventListener("resize", handleViewportResize);
