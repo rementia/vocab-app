@@ -108,6 +108,11 @@ This checklist is used to confirm that the public portfolio version still works 
 * [ ] Auto-pronunciation does not run when disabled
 * [ ] Moving to another word updates pronunciation state correctly
 * [ ] The app does not stop completely if pronunciation loading fails
+* [ ] On mobile browsers, after reload with pronunciation sync enabled, the first tap or swipe attempts audio unlock
+* [ ] If the first swipe cannot play audio because of browser restrictions, the audio enable prompt is shown
+* [ ] After one tap or the audio enable button, pronunciation sync works on word navigation
+* [ ] Pronunciation sync disabled does not play audio on swipe
+* [ ] Browser autoplay restrictions may still require one tap before pronunciation starts
 
 ## 10. UI
 

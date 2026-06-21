@@ -94,7 +94,8 @@ import {
   initPronunciation,
   updateSpeechButtonAvailability,
   speakWord,
-  loadPronunciation
+  loadPronunciation,
+  unlockPronunciationAudioOnce
 } from './pronunciation.js';
 import {
   buildMultipleChoiceQuestion,
@@ -236,7 +237,8 @@ const speechSyncController = createSpeechSyncController({
   saveSpeechSyncState,
   updateSpeechSyncButton,
   speakWord,
-  shouldBlockSpeech: () => multipleChoiceMode && !multipleChoiceAnswer
+  shouldBlockSpeech: () => multipleChoiceMode && !multipleChoiceAnswer,
+  unlockPronunciationAudio: unlockPronunciationAudioOnce
 });
 
 const cloudSyncController = createCloudSyncController({
