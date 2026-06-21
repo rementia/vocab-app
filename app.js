@@ -1285,8 +1285,8 @@ function scheduleAutoPlay() {
 function scheduleAutoPlayAfterRender() {
   autoPlayController.scheduleAfterRender();
 }
-function scheduleSpeechSync() {
-  speechSyncController.schedule();
+function scheduleSpeechSync(options) {
+  speechSyncController.schedule(options);
 }
 
 function scheduleSpeechSyncAfterRender() {
@@ -1454,50 +1454,62 @@ function toggleFrequencyMode() {
   scheduleSpeechSyncAfterRender();
 }
 
-function prevWord() {
-  if (!words.length) return;
-  if (applyPendingWordOrderAsNext()) return;
+function getSpeechSyncOptions({ immediateSpeechSync = false } = {}) {
+  return immediateSpeechSync ? { immediate: true } : undefined;
+}
+
+function prevWord(options = {}) {
+  if (!words.length) return false;
+  if (applyPendingWordOrderAsNext()) return true;
 
   if (randomMode) {
     const historyIndex = navGetRandomPrevIndexFromHistory();
     if (historyIndex !== null) {
       index = historyIndex;
       renderCurrentWord();
-      scheduleSpeechSync();
+      scheduleSpeechSync(getSpeechSyncOptions(options));
       scheduleAutoPlay();
       persistCurrentIndex();
-      return;
+      return true;
     }
   }
 
   const prevIndex = (index - 1 + words.length) % words.length;
-  navMoveToIndex(prevIndex, { pushHistory: randomMode });
+  const moved = navMoveToIndex(prevIndex, {
+    pushHistory: randomMode,
+    speechSyncOptions: getSpeechSyncOptions(options)
+  });
   scheduleAutoPlayAfterRender();
+  return moved;
 }
 
-function nextWord() {
-  if (!words.length) return;
-  if (applyPendingWordOrderAsNext()) return;
+function nextWord(options = {}) {
+  if (!words.length) return false;
+  if (applyPendingWordOrderAsNext()) return true;
 
   if (randomMode) {
     const historyIndex = navGetRandomNextIndexFromHistory();
     if (historyIndex !== null) {
       index = historyIndex;
       renderCurrentWord();
-      scheduleSpeechSync();
+      scheduleSpeechSync(getSpeechSyncOptions(options));
       scheduleAutoPlay();
       persistCurrentIndex();
-      return;
+      return true;
     }
   }
 
   const nextIndex = (index + 1) % words.length;
   if (shouldStopAutoPlayOnce(nextIndex)) {
     stopAutoPlay();
-    return;
+    return false;
   }
-  navMoveToIndex(nextIndex, { pushHistory: randomMode });
+  const moved = navMoveToIndex(nextIndex, {
+    pushHistory: randomMode,
+    speechSyncOptions: getSpeechSyncOptions(options)
+  });
   scheduleAutoPlayAfterRender();
+  return moved;
 }
 
 export { init, finishInitialLoading };
