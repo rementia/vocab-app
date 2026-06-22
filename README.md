@@ -12,11 +12,11 @@ https://rementia.github.io/vocab-app/
 
 ## Overview
 
-This repository is the public portfolio version of the vocabulary app.
+This repository is the public portfolio/demo version of the vocabulary learning app.
 
 The app is a static frontend built with HTML, CSS, JavaScript, Firebase Authentication, Cloud Firestore, Google Sheets CSV, and GitHub Pages. It does not require a backend server or build step.
 
-The public version uses a small demo vocabulary dataset and separates its Firestore collection and localStorage prefix from the private study version.
+The public version uses a small demo vocabulary dataset and separates its Firestore collection and localStorage prefix from the private study version. A separate private study version exists with Firestore-backed vocabulary syncing through Google Apps Script.
 
 ## Main Features
 
@@ -32,6 +32,10 @@ The public version uses a small demo vocabulary dataset and separates its Firest
 * Favorite words and difficult words after Google login
 * Search and keyboard shortcuts
 * Responsive layout for desktop and mobile
+
+## Browser Audio Note
+
+iOS Safari may require tapping the pronunciation button or the screen once before Web Speech audio can play. After audio is enabled, pronunciation sync can be used with swipes and keyboard navigation.
 
 ## Technologies
 
@@ -113,13 +117,14 @@ Vocabulary data is normally loaded from Google Sheets CSV when the app starts. A
 
 The public portfolio app and the private study app are intentionally separated.
 
-| Area                      | Public portfolio version |
-| ------------------------- | ------------------------ |
-| Repository                | `vocab-app`              |
-| Demo hosting              | GitHub Pages             |
-| Vocabulary data           | Google Sheets CSV demo data |
-| Firestore user collection | `portfolioUsers/{uid}`   |
-| localStorage prefix       | `portfolio_tango_`       |
+| Area | vocab-app | vocab-app-study |
+| --- | --- | --- |
+| Purpose | Public portfolio/demo version | Private study version |
+| Vocabulary source | Google Sheets CSV direct fetch | Google Sheets -> Apps Script -> Firestore |
+| User collection | `portfolioUsers/{uid}` | `privateUsers/{uid}` |
+| Word collection | none | `privateWords/{vol}` |
+| localStorage prefix | `portfolio_tango_` | `vocab_app_study_` |
+| Demo/public usage | Public GitHub Pages demo | Private/personal study usage |
 
 This separation prevents demo users, sample vocabulary data, Firestore documents, and browser-local state from mixing with the private study environment.
 
