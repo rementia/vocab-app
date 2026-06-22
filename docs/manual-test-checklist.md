@@ -131,6 +131,10 @@ This checklist is used to confirm that the public portfolio version still works 
 * [ ] Buttons are large enough to tap
 * [ ] Sidebar can be operated
 * [ ] No important content overflows outside the screen
+* [ ] Swipe left/right on the word card to move between words
+* [ ] Short horizontal swipes return the card to the center without changing words
+* [ ] Vertical scrolling is not blocked by card swipe handling
+* [ ] Pronunciation sync still follows the existing browser audio policy after word changes
 
 ## 12. Google Login
 

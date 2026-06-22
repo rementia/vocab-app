@@ -120,6 +120,7 @@ const {
   reloadWordsStatusEl,
   listEl,
   sidebarEl,
+  centerBoxEl,
   wordEl,
   meaningEl,
   progressEl,
@@ -368,7 +369,7 @@ async function init() {
     scheduleSpeechSync,
     getWordsLength: () => words.length
   });
-  bindTouchEvents({ prevWord, nextWord, isSwipeAllowedTarget });
+  bindTouchEvents({ prevWord, nextWord, isSwipeAllowedTarget, swipeElement: centerBoxEl });
   bindUIEvents();
   bindKeyboardEvents({
     prevWord,
