@@ -29,10 +29,10 @@ export function clearNavigationHistory() {
   historyForwardStack = [];
 }
 
-export function moveToIndex(nextIndex, { pushHistory = false, speechSyncOptions } = {}) {
-  if (!getWordsLengthFn || getWordsLengthFn() === 0) return false;
-  if (nextIndex < 0 || nextIndex >= getWordsLengthFn()) return false;
-  if (nextIndex === getIndexFn()) return false;
+export function moveToIndex(nextIndex, { pushHistory = false } = {}) {
+  if (!getWordsLengthFn || getWordsLengthFn() === 0) return;
+  if (nextIndex < 0 || nextIndex >= getWordsLengthFn()) return;
+  if (nextIndex === getIndexFn()) return;
 
   if (pushHistory) {
     pushStack(historyBackStack, getIndexFn());
@@ -41,8 +41,7 @@ export function moveToIndex(nextIndex, { pushHistory = false, speechSyncOptions 
 
   setIndexFn(nextIndex);
   if (typeof renderFn === 'function') renderFn();
-  if (typeof scheduleSpeechSyncFn === 'function') scheduleSpeechSyncFn(speechSyncOptions);
-  return true;
+  if (typeof scheduleSpeechSyncFn === 'function') scheduleSpeechSyncFn();
 }
 
 export function getRandomPrevIndexFromHistory() {
