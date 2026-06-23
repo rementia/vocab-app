@@ -125,8 +125,6 @@ const {
   meaningEl,
   progressEl,
   pronunciationEl,
-  audioUnlockPromptEl,
-  audioUnlockBtnEl,
   prevHintEl,
   nextHintEl,
   currentEl,
@@ -391,8 +389,6 @@ async function init() {
   setupAuthListener();
   initPronunciation({
     el: pronunciationEl,
-    audioUnlockPrompt: audioUnlockPromptEl,
-    audioUnlockButton: audioUnlockBtnEl,
     getCurrentWord
   });
   updateSpeechButtonAvailability(speakWordBtnEl);
