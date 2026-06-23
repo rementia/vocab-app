@@ -1049,7 +1049,7 @@ function setReloadWordsInProgress(isLoading) {
   isReloadingWords = isLoading;
   if (!reloadWordsBtnEl) return;
   reloadWordsBtnEl.disabled = isLoading;
-  reloadWordsBtnEl.textContent = isLoading ? "再読み込み中..." : "単語データ再読み込み";
+  reloadWordsBtnEl.textContent = isLoading ? "再読み込み中..." : "単語更新";
 }
 
 function hasAnyWordsByVol(wordsByVol) {

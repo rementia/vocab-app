@@ -111,7 +111,7 @@ Browser-local UI state is restored from localStorage:
 localStorage portfolio_tango_*
 ```
 
-Vocabulary data is normally loaded from Google Sheets CSV when the app starts. After editing the spreadsheet, use the `単語データ再読み込み` button in the sidebar or reload the page to fetch the latest CSV. Explicit reloads add a cache-busting query so the browser is less likely to reuse an old CSV response. Favorites, difficult words, and review scores are tied to word IDs based on the English word, so changing the English word can make it behave like a different word; editing only the meaning is generally safer.
+Vocabulary data is normally loaded from Google Sheets CSV when the app starts. After editing the spreadsheet, use the `単語更新` button in the sidebar or reload the page to fetch the latest CSV. Explicit reloads add a cache-busting query so the browser is less likely to reuse an old CSV response. Favorites, difficult words, and review scores are tied to word IDs based on the English word, so changing the English word can make it behave like a different word; editing only the meaning is generally safer.
 
 ## Public and Study Versions
 
