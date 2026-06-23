@@ -14,6 +14,10 @@ export function makeWordOrderCacheKey({ orderMode, currentMode, currentVol }) {
   return `${orderMode}:${scope}`;
 }
 
+export function shouldRebuildOrderAtCycleEnd({ nextIndex, randomMode, frequencyMode }) {
+  return nextIndex === 0 && (randomMode || frequencyMode);
+}
+
 export function shuffleArray(array, random = Math.random) {
   const copied = [...array];
   for (let i = copied.length - 1; i > 0; i -= 1) {

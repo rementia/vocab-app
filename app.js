@@ -69,7 +69,8 @@ import { clampIndex } from './wordList.js';
 import {
   getOrderedWords,
   getWordOrderMode,
-  makeWordOrderCacheKey
+  makeWordOrderCacheKey,
+  shouldRebuildOrderAtCycleEnd
 } from './wordOrderService.js';
 import { loadSavedState as loadSavedStateFromStorage } from './savedStateController.js';
 import { createAutoPlayController } from './autoPlayController.js';
@@ -620,15 +621,10 @@ function finishReviewScoreChange() {
   updateReviewButtons();
 }
 
-function finishReviewStatsChange(preserveCurrentId) {
+function finishReviewStatsChange() {
   reviewScoresVersion += 1;
   saveReviewScoresToLocalOnly(reviewScores);
   clearWordOrderCache();
-
-  if (frequencyMode) {
-    applyWordOrder(false, preserveCurrentId);
-    requestListRebuild();
-  }
 
   renderLayout();
   updateReviewButtons();
@@ -698,7 +694,7 @@ function handleMultipleChoiceOptionClick(event) {
   };
 
   recordReviewAnswer(reviewScores, current, selectedOption.isCorrect);
-  finishReviewStatsChange(current.id);
+  finishReviewStatsChange();
   scheduleSpeechSync();
 }
 function flashReviewButton(button) {
@@ -1493,6 +1489,17 @@ function nextWord() {
   const nextIndex = (index + 1) % words.length;
   if (shouldStopAutoPlayOnce(nextIndex)) {
     stopAutoPlay();
+    return;
+  }
+  if (shouldRebuildOrderAtCycleEnd({ nextIndex, randomMode, frequencyMode })) {
+    navClearNavigationHistory();
+    clearWordOrderCache();
+    wordOrderUpdatePending = false;
+    applyWordOrder(true);
+    requestListRebuild();
+    render();
+    scheduleSpeechSyncAfterRender();
+    scheduleAutoPlayAfterRender();
     return;
   }
   navMoveToIndex(nextIndex, { pushHistory: randomMode });

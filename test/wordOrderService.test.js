@@ -4,6 +4,7 @@ import {
   getWordOrderMode,
   isWordOrderCacheValid,
   makeWordOrderCacheKey,
+  shouldRebuildOrderAtCycleEnd,
   shuffleArray
 } from "../wordOrderService.js";
 
@@ -17,6 +18,26 @@ assert.strictEqual(getWordOrderMode({ randomMode: false, frequencyMode: false })
 assert.strictEqual(getWordOrderMode({ randomMode: true, frequencyMode: false }), "random");
 assert.strictEqual(getWordOrderMode({ randomMode: false, frequencyMode: true }), "frequency");
 assert.strictEqual(getWordOrderMode({ randomMode: true, frequencyMode: true }), "frequency-random");
+assert.strictEqual(
+  shouldRebuildOrderAtCycleEnd({ nextIndex: 0, randomMode: false, frequencyMode: true }),
+  true,
+  "frequency mode should rebuild the order at the end of a cycle"
+);
+assert.strictEqual(
+  shouldRebuildOrderAtCycleEnd({ nextIndex: 0, randomMode: true, frequencyMode: false }),
+  true,
+  "random mode should rebuild the order at the end of a cycle"
+);
+assert.strictEqual(
+  shouldRebuildOrderAtCycleEnd({ nextIndex: 2, randomMode: true, frequencyMode: true }),
+  false,
+  "word order should stay stable during a cycle"
+);
+assert.strictEqual(
+  shouldRebuildOrderAtCycleEnd({ nextIndex: 0, randomMode: false, frequencyMode: false }),
+  false,
+  "normal order should not rebuild at wraparound"
+);
 
 assert.strictEqual(
   makeWordOrderCacheKey({ orderMode: "random", currentMode: "vol", currentVol: "vol2" }),
