@@ -70,8 +70,10 @@ assert.strictEqual(
 
 const originalFetch = globalThis.fetch;
 const fetchedUrls = [];
-globalThis.fetch = async (url) => {
+const fetchedOptions = [];
+globalThis.fetch = async (url, options = {}) => {
   fetchedUrls.push(String(url));
+  fetchedOptions.push(options);
   return {
     ok: true,
     text: async () => leveledCsv
@@ -87,6 +89,7 @@ try {
   await fetchWordsByVol({ forceRefresh: true });
   assert.strictEqual(fetchedUrls.length, 2, "force refresh should bypass cached data");
   assert.strictEqual(fetchedUrls[1].includes("&_="), true, "force refresh should fetch with a cache-busting URL");
+  assert.deepStrictEqual(fetchedOptions[1], { cache: "no-store" }, "force refresh should bypass the browser HTTP cache");
 
   clearWordsCache();
   await fetchWordsByVol();

@@ -23,12 +23,12 @@ export function getSheetFetchUrl({ forceRefresh = false, cacheBust = Date.now() 
   return forceRefresh ? `${SHEET_URL}&_=${cacheBust}` : SHEET_URL;
 }
 
-export async function fetchWithRetry(url, retryCount = 1) {
+export async function fetchWithRetry(url, retryCount = 1, fetchOptions = {}) {
   let lastError = null;
 
   for (let attempt = 0; attempt <= retryCount; attempt += 1) {
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, fetchOptions);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -178,7 +178,11 @@ export async function fetchWordsByVol(options = {}) {
   const { forceRefresh = false } = options;
   if (!forceRefresh && wordsByVolCache) return wordsByVolCache;
 
-  const response = await fetchWithRetry(getSheetFetchUrl({ forceRefresh }), 1);
+  const response = await fetchWithRetry(
+    getSheetFetchUrl({ forceRefresh }),
+    1,
+    forceRefresh ? { cache: "no-store" } : {}
+  );
   const text = await response.text();
   wordsByVolCache = parseCsvToWordsByVol(text);
 
