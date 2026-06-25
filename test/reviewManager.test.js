@@ -1,27 +1,13 @@
 import assert from "assert";
 import {
-  getReviewScore,
   getReviewStats,
   getReviewWeight,
   recordReviewAnswer,
-  resetReviewScore,
-  sortByReviewScore,
-  updateReviewScore
+  sortByReviewScore
 } from "../reviewManager.js";
 
 const item = { id: "alpha", word: "alpha" };
 const scores = {};
-
-assert.strictEqual(getReviewScore(scores, item), 0);
-assert.strictEqual(updateReviewScore(scores, item, 1), 1);
-assert.strictEqual(getReviewScore(scores, item), 1);
-assert.strictEqual(updateReviewScore(scores, item, -1), 0);
-assert.strictEqual(getReviewScore(scores, item), 0);
-assert.strictEqual(Boolean(scores.alpha), false, "zero scores should be removed from storage data");
-assert.strictEqual(updateReviewScore(scores, item, -10), -5);
-assert.strictEqual(updateReviewScore(scores, item, 20), 5);
-assert.strictEqual(resetReviewScore(scores, item), 0);
-assert.strictEqual(getReviewScore(scores, item), 0);
 
 recordReviewAnswer(scores, item, true, 1000);
 assert.deepStrictEqual(
@@ -38,10 +24,10 @@ assert.deepStrictEqual(
 assert.strictEqual(getReviewWeight(scores, item), 4.5, "wrong stats should increase frequency weight");
 recordReviewAnswer(scores, item, true, 3000);
 recordReviewAnswer(scores, item, true, 4000);
-assert.strictEqual(getReviewWeight(scores, item), 2, "correct streaks should reduce but not remove frequency weight");
-updateReviewScore(scores, item, 2);
-assert.strictEqual(resetReviewScore(scores, item), 0);
-assert.strictEqual(getReviewStats(scores, item).correct, 3, "manual score reset should keep answer stats");
+assert.strictEqual(getReviewWeight(scores, item), 2.2, "correct streaks should reduce but not remove frequency weight");
+scores.alpha.score = 5;
+assert.strictEqual(getReviewWeight(scores, item), 2.2, "legacy manual scores should not affect frequency weight");
+assert.strictEqual(getReviewWeight(scores, item, { starred: true }), 3.2, "starred words should get a small weight bonus");
 
 const scoredItems = [
   { id: "a" },
@@ -69,7 +55,7 @@ const randomizedTieSorted = sortByReviewScore(scoredItems, () => 1, { randomizeT
 assert.deepStrictEqual(
   randomizedTieSorted.map((candidate) => candidate.id).sort(),
   ["a", "b", "c", "d"],
-  "tie randomization should keep the same items"
+  "weighted random ordering should keep the same items without duplicates"
 );
 
 console.log("All review score tests passed.");

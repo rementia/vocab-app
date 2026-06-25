@@ -196,7 +196,7 @@ Wrong answers:
 * reset `streakCorrect`
 * update `lastAnsweredAt`
 
-Frequency mode uses these stats so words with more wrong answers appear more often, while words with repeated correct answers become slightly less frequent. A lower bound keeps every word eligible for review.
+Frequency mode uses these stats instead of manual frequency adjustments. Words with more wrong answers appear more often, words with repeated correct answers become slightly less frequent, and favorite words get a small extra weight. A lower bound keeps every word eligible for review.
 
 ## Error Handling
 
