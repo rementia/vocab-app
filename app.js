@@ -48,17 +48,20 @@ import {
 import {
   buildFavoriteEntries,
   isFavorite,
+  migrateLegacyFavoriteRecords,
   toggleFavoriteCurrentWord as toggleFavoriteCurrentWordManager,
   loadFavoritesMode as loadFavoritesModeManager
 } from './favoritesManager.js';
 import {
   buildDifficultEntries,
   isDifficult,
+  migrateLegacyDifficultRecords,
   toggleDifficultCurrentWord as toggleDifficultCurrentWordManager,
   loadDifficultsMode as loadDifficultsModeManager
 } from './difficultsManager.js';
 import {
   getReviewWeight,
+  migrateLegacyReviewScores,
   recordReviewAnswer
 } from './reviewManager.js';
 import { clampIndex } from './wordList.js';
@@ -851,6 +854,7 @@ function applyFavoritesResult(result) {
   favoritesVersion += 1;
   saveFavoritesToLocalOnly(favorites);
   saveFavoritesUpdatedAt(favoritesUpdatedAt);
+  void migrateLegacyUserRecordsForLoadedWords();
 }
 
 function applyDifficultsResult(result) {
@@ -859,6 +863,7 @@ function applyDifficultsResult(result) {
   difficultsVersion += 1;
   saveDifficultsToLocalOnly(difficults);
   saveDifficultsUpdatedAt(difficultsUpdatedAt);
+  void migrateLegacyUserRecordsForLoadedWords();
 }
 
 function applyRealtimeFavoritesResult(result) {
@@ -914,9 +919,44 @@ async function saveDifficultsToCloud() {
   await cloudSyncController.saveDifficultsToCloud();
 }
 
+async function migrateLegacyUserRecordsForLoadedWords() {
+  const favoritesResult = migrateLegacyFavoriteRecords(favorites, allWordsByVol);
+  const difficultsResult = migrateLegacyDifficultRecords(difficults, allWordsByVol);
+  const reviewScoresResult = migrateLegacyReviewScores(reviewScores, allWordsByVol);
+
+  if (!favoritesResult.changed && !difficultsResult.changed && !reviewScoresResult.changed) {
+    return;
+  }
+
+  if (favoritesResult.changed) {
+    favoritesUpdatedAt = Date.now();
+    favoritesVersion += 1;
+    saveFavoritesToLocalOnly(favorites);
+    saveFavoritesUpdatedAt(favoritesUpdatedAt);
+    if (currentUser) await saveFavoritesToCloud();
+  }
+
+  if (difficultsResult.changed) {
+    difficultsUpdatedAt = Date.now();
+    difficultsVersion += 1;
+    saveDifficultsToLocalOnly(difficults);
+    saveDifficultsUpdatedAt(difficultsUpdatedAt);
+    if (currentUser) await saveDifficultsToCloud();
+  }
+
+  if (reviewScoresResult.changed) {
+    reviewScoresVersion += 1;
+    saveReviewScoresToLocalOnly(reviewScores);
+  }
+
+  clearWordOrderCache();
+  requestListRebuild();
+}
+
 async function ensureVolLoaded(volName) {
   if (!allWordsByVol[volName] || allWordsByVol[volName].length === 0) {
     allWordsByVol[volName] = await fetchWordsForVol(volName);
+    await migrateLegacyUserRecordsForLoadedWords();
   }
 }
 
@@ -1015,6 +1055,7 @@ async function handleReloadWords() {
     }
 
     allWordsByVol = { ...createInitialWordsByVol(), ...refreshedWordsByVol };
+    await migrateLegacyUserRecordsForLoadedWords();
     clearWordOrderCache();
     resetMultipleChoiceState();
     applyWordOrder(false);

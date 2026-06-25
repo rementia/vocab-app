@@ -2,6 +2,7 @@ import assert from "assert";
 import {
   getReviewStats,
   getReviewWeight,
+  migrateLegacyReviewScores,
   recordReviewAnswer,
   sortByReviewScore
 } from "../reviewManager.js";
@@ -37,6 +38,21 @@ assert.strictEqual(getReviewStats(legacyScores, stableIdItem).wrong, 2, "legacy 
 recordReviewAnswer(legacyScores, stableIdItem, true, 5000);
 assert.strictEqual(Boolean(legacyScores.w_stable1234), true, "new review answers should be saved under the stable id");
 assert.strictEqual(Boolean(legacyScores.hello), false, "legacy review keys should be migrated after the next answer");
+
+const legacyReviewScores = { hello: { wrong: 1 } };
+assert.strictEqual(migrateLegacyReviewScores(legacyReviewScores, {
+  vol1: [{ id: "w_hello001", word: "hello", legacyWordKey: "hello" }]
+}).changed, true);
+assert.deepStrictEqual(legacyReviewScores, { w_hello001: { wrong: 1 } });
+
+const duplicateReviewScores = {
+  hello: { wrong: 1 },
+  w_hello001: { wrong: 3 }
+};
+migrateLegacyReviewScores(duplicateReviewScores, {
+  vol1: [{ id: "w_hello001", word: "hello", legacyWordKey: "hello" }]
+});
+assert.deepStrictEqual(duplicateReviewScores, { w_hello001: { wrong: 3 } });
 
 const scoredItems = [
   { id: "a" },
