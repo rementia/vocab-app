@@ -23,6 +23,11 @@ const favorites = {
 
 assert.strictEqual(isFavorite(favorites, wordsByVol.vol1[1]), true);
 assert.strictEqual(isFavorite(favorites, wordsByVol.vol1[0]), false);
+assert.strictEqual(
+  isFavorite(favorites, { id: "w_beta001", word: "beta", legacyWordKey: "beta" }),
+  true,
+  "legacy word-key favorites should remain readable when a stable id exists"
+);
 
 assert.deepStrictEqual(
   buildFavoriteEntries(wordsByVol, ["vol1", "vol2"], favorites).map((item) => item.word),

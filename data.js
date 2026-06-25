@@ -1,6 +1,7 @@
 import { normalizeWordKey } from "./wordIdentity.js";
 
 export const SHEET_URL = "https://docs.google.com/spreadsheets/d/17XhRsbdw5NfgGPsmkam8_B1F2mtlGMJ3Uh00l5UIIMY/export?format=csv&gid=0";
+const ID_COLUMN_NAMES = ["id", "wordid", "word_id", "word id", "単語id"];
 const VOL_NAMES = ["vol1", "vol2", "vol3", "vol4"];
 const LEVEL_TO_VOL = {
   "1": "vol1",
@@ -100,6 +101,7 @@ export function parseCsv(text) {
 function hasHeaderRow(row) {
   const headers = row.map((cell) => String(cell ?? "").toLowerCase().trim());
   return (
+    headers.some((value) => ID_COLUMN_NAMES.includes(value)) ||
     headers.some((value) => value === "word" || value === "単語") ||
     headers.some((value) => value === "meaning" || value === "意味")
   );
@@ -128,6 +130,7 @@ function getCsvColumnIndexes(rows, startIndex) {
     : [];
 
   return {
+    idIndex: getColumnIndex(headers, ID_COLUMN_NAMES, -1),
     wordIndex: getColumnIndex(headers, ["word", "単語"], 0),
     meaningIndex: getColumnIndex(headers, ["meaning", "意味"], 1),
     levelIndex: getColumnIndex(headers, ["level", "レベル"], -1)
@@ -138,11 +141,12 @@ function createEmptyWordsByVol() {
   return Object.fromEntries(VOL_NAMES.map((volName) => [volName, []]));
 }
 
-function createWordEntry(word, meaning, sourceVol) {
+function createWordEntry(word, meaning, sourceVol, stableId = "") {
   return {
-    id: normalizeWordKey(word),
+    id: normalizeWordKey(stableId || word),
     word,
     meaning,
+    legacyWordKey: normalizeWordKey(word),
     sourceVol
   };
 }
@@ -151,7 +155,7 @@ export function parseCsvToWordsByVol(text) {
   const rows = getTrimmedRows(text);
 
   const startIndex = rows.length > 0 && hasHeaderRow(rows[0]) ? 1 : 0;
-  const { wordIndex, meaningIndex, levelIndex } = getCsvColumnIndexes(rows, startIndex);
+  const { idIndex, wordIndex, meaningIndex, levelIndex } = getCsvColumnIndexes(rows, startIndex);
   const wordsByVol = createEmptyWordsByVol();
 
   if (levelIndex < 0) return wordsByVol;
@@ -164,7 +168,8 @@ export function parseCsvToWordsByVol(text) {
     if (!word) return;
 
     const meaning = cols[meaningIndex] || "";
-    wordsByVol[sourceVol].push(createWordEntry(word, meaning, sourceVol));
+    const stableId = idIndex >= 0 ? cols[idIndex] || "" : "";
+    wordsByVol[sourceVol].push(createWordEntry(word, meaning, sourceVol, stableId));
   });
 
   return wordsByVol;

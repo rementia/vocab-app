@@ -41,6 +41,7 @@ assert.deepStrictEqual(parsedLevelOneWords, [
     id: "create",
     word: "create",
     meaning: "作る",
+    legacyWordKey: "create",
     sourceVol: "vol1"
   }
 ]);
@@ -51,12 +52,34 @@ assert.deepStrictEqual(parsedLevelTwoWords, [
     id: "improve",
     word: "improve",
     meaning: "改善する",
+    legacyWordKey: "improve",
     sourceVol: "vol2"
   },
   {
     id: "practice",
     word: "practice",
     meaning: "練習する",
+    legacyWordKey: "practice",
+    sourceVol: "vol2"
+  }
+]);
+
+const stableIdCsv = `id,word,meaning,level\r\nw_create001,create,作る,1\r\n,study,勉強する,2\r\n`;
+assert.deepStrictEqual(parseCsvToWords(stableIdCsv, "vol1"), [
+  {
+    id: "w_create001",
+    word: "create",
+    meaning: "作る",
+    legacyWordKey: "create",
+    sourceVol: "vol1"
+  }
+]);
+assert.deepStrictEqual(parseCsvToWords(stableIdCsv, "vol2"), [
+  {
+    id: "study",
+    word: "study",
+    meaning: "勉強する",
+    legacyWordKey: "study",
     sourceVol: "vol2"
   }
 ]);
