@@ -10,7 +10,8 @@ import {
 const wordsByVol = {
   vol1: [
     { id: "alpha", word: "alpha", sourceVol: "vol1" },
-    { id: "beta", word: "beta", sourceVol: "vol1" }
+    { id: "beta", word: "beta", sourceVol: "vol1" },
+    { id: "w_delta001", word: "delta", legacyWordKey: "delta", sourceVol: "vol1" }
   ],
   vol2: [
     { id: "gamma", word: "gamma", sourceVol: "vol2" }
@@ -19,7 +20,8 @@ const wordsByVol = {
 
 const favorites = {
   beta: { addedAt: 1 },
-  gamma: { addedAt: 2 }
+  gamma: { addedAt: 2 },
+  "vol1::delta": { addedAt: 3 }
 };
 
 assert.strictEqual(isFavorite(favorites, wordsByVol.vol1[1]), true);
@@ -28,6 +30,11 @@ assert.strictEqual(
   isFavorite(favorites, { id: "w_beta001", word: "beta", legacyWordKey: "beta" }),
   true,
   "legacy word-key favorites should remain readable when a stable id exists"
+);
+assert.strictEqual(
+  isFavorite(favorites, wordsByVol.vol1[2]),
+  true,
+  "vol-scoped legacy favorites should remain readable before migration"
 );
 
 const legacyFavorites = { beta: { addedAt: 1 } };
@@ -48,7 +55,7 @@ assert.deepStrictEqual(duplicateFavorites, { w_beta001: { addedAt: 2 } });
 
 assert.deepStrictEqual(
   buildFavoriteEntries(wordsByVol, ["vol1", "vol2"], favorites).map((item) => item.word),
-  ["beta", "gamma"]
+  ["beta", "delta", "gamma"]
 );
 
 const state = {
