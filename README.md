@@ -45,6 +45,7 @@ iOS Safari may require tapping the pronunciation button or the screen once befor
 * Firebase Authentication
 * Cloud Firestore
 * Google Sheets CSV export
+* Google Apps Script in the private study version
 * GitHub Pages
 * Node.js test runner
 
@@ -70,7 +71,7 @@ multipleChoice.js            四択問題 option generation
 wordOrderService.js          Random and frequency word ordering
 wordReloadService.js         Current word position handling after CSV reload
 reloadStatusService.js       Reload status messages and auto-clear timers
-wordIdentity.js              Stable word key normalization
+wordIdentity.js              Stable word ID and legacy key migration helpers
 wordList.js                  Shared word-list helpers
 navigation.js                Word navigation history
 pronunciation.js             Pronunciation lookup and speech playback
@@ -111,7 +112,29 @@ Browser-local UI state is restored from localStorage:
 localStorage portfolio_tango_*
 ```
 
-Vocabulary data is normally loaded from Google Sheets CSV when the app starts. After editing the spreadsheet, use the `単語更新` button in the sidebar or reload the page to fetch the latest CSV. Explicit reloads add a cache-busting query so the browser is less likely to reuse an old CSV response. Favorites, difficult words, and review scores are tied to word IDs based on the English word, so changing the English word can make it behave like a different word; editing only the meaning is generally safer.
+Vocabulary data is normally loaded from Google Sheets CSV when the app starts. After editing the spreadsheet, use the `単語更新` button in the sidebar or reload the page to fetch the latest CSV. Explicit reloads add a cache-busting query so the browser is less likely to reuse an old CSV response.
+
+## Stable Word IDs
+
+Earlier versions used the English `word` value as the internal key for favorites, difficult words, and review scores. That was simple, but `word` is display data: spelling fixes, translation edits, or level changes can happen during normal vocabulary maintenance.
+
+The current app supports a stable `id` column in the vocabulary CSV. When `id` is present, the app uses it as the internal word key. If the column is missing or blank, the app falls back to the existing word-based behavior so older demo data still works.
+
+Because learning data is tied to the stable ID, favorites, difficult words, and review scores can continue to match the same word even when `word`, `meaning`, or `level` is edited.
+
+## Legacy Data Migration
+
+To avoid breaking older browser or Firestore data, the app keeps a small migration layer for legacy word-key records.
+
+On load, favorites, difficult words, and review scores are normalized where possible:
+
+* old `word` keys are moved to the stable ID key
+* old `volN::word` keys are moved to the stable ID key
+* old `volN-number-word` keys are moved to the stable ID key
+* if both old and new keys exist, the stable ID key is kept and the old key is removed
+* old keys that no longer match current vocabulary data are removed
+
+This keeps the app usable after introducing stable IDs while still preserving the current stable-ID based behavior going forward.
 
 ## Public and Study Versions
 
@@ -249,6 +272,9 @@ The public demo uses a small, independently prepared sample vocabulary dataset. 
 * Improve non-blocking error messages with an in-page status area
 * Add more detailed learning history
 * Improve progress visualization
+* Consider `Utilities.getUuid()` for stronger ID generation in the private Apps Script flow
+* Add screenshots for portfolio presentation
+* Continue checking smartphone portrait and landscape layouts on real devices
 * Expand UI tests for mobile layout-sensitive behavior
 
 ## Author
