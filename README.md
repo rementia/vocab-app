@@ -33,6 +33,20 @@ The public version uses a small demo vocabulary dataset and separates its Firest
 * Search and keyboard shortcuts
 * Responsive layout for desktop and mobile
 
+## Screenshots
+
+The following screenshots are expected to be placed under `docs/images/`.
+
+![Main screen](./docs/images/main-screen.png)
+
+![Word card screen](./docs/images/word-card-screen.png)
+
+![Favorites screen](./docs/images/favorites-screen.png)
+
+![Difficult words screen](./docs/images/difficults-screen.png)
+
+![Review screen](./docs/images/review-screen.png)
+
 ## Browser Audio Note
 
 iOS Safari may require tapping the pronunciation button or the screen once before Web Speech audio can play. After audio is enabled, pronunciation sync can be used with swipes and keyboard navigation.
