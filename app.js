@@ -190,6 +190,7 @@ let multipleChoiceAnswer = null;
 let multipleChoiceRevealedOptionIndexes = new Set();
 let multipleChoiceLongPressTimer = null;
 let multipleChoiceLongPressState = null;
+let multipleChoiceTouchState = null;
 let suppressNextMultipleChoiceClick = false;
 let etymologyTarget = null;
 
@@ -734,7 +735,7 @@ async function speakEtymologyTarget() {
 }
 
 function handleMultipleChoicePointerDown(event) {
-  if (!multipleChoiceAnswer || (event.pointerType !== "touch" && event.button !== 0)) return;
+  if (event.pointerType === "touch" || !multipleChoiceAnswer || event.button !== 0) return;
 
   const button = event.target instanceof Element
     ? event.target.closest(".multiple-choice-option")
@@ -808,6 +809,78 @@ function preventMultipleChoiceTextSelection(event) {
   if (button) event.preventDefault();
 }
 
+function handleMultipleChoiceTouchStart(event) {
+  const button = event.target instanceof Element
+    ? event.target.closest(".multiple-choice-option")
+    : null;
+  if (!(button instanceof HTMLElement)) return;
+
+  const touch = event.touches?.[0];
+  if (!touch) return;
+
+  // iOS Safari の長押し選択・コールアウトを確実に抑止する。
+  event.preventDefault();
+  clearMultipleChoiceLongPressTimer();
+
+  const choiceIndex = Number(button.dataset.choiceIndex);
+  multipleChoiceTouchState = {
+    button,
+    startX: touch.clientX,
+    startY: touch.clientY,
+    choiceIndex,
+    moved: false,
+    fired: false
+  };
+
+  // 語源解析は従来どおり「解答後のみ」有効。
+  if (!multipleChoiceAnswer) return;
+
+  multipleChoiceLongPressTimer = window.setTimeout(() => {
+    const state = multipleChoiceTouchState;
+    if (!state || state.moved) return;
+
+    const latestQuestion = getMultipleChoiceQuestion();
+    const option = latestQuestion?.options?.[state.choiceIndex];
+    const target = findLoadedWordById(option?.wordId);
+    if (!target) return;
+
+    state.fired = true;
+    suppressNextMultipleChoiceClick = true;
+    openEtymologyAnalysis(target);
+  }, MULTIPLE_CHOICE_LONG_PRESS_MS);
+}
+
+function handleMultipleChoiceTouchMove(event) {
+  const state = multipleChoiceTouchState;
+  const touch = event.touches?.[0];
+  if (!state || !touch) return;
+
+  event.preventDefault();
+  const distance = Math.hypot(touch.clientX - state.startX, touch.clientY - state.startY);
+  if (distance > MULTIPLE_CHOICE_LONG_PRESS_MOVE_PX) {
+    state.moved = true;
+    clearMultipleChoiceLongPressTimer();
+  }
+}
+
+function finishMultipleChoiceTouchGesture(event) {
+  const state = multipleChoiceTouchState;
+  if (!state) return;
+
+  event.preventDefault();
+  clearMultipleChoiceLongPressTimer();
+  multipleChoiceTouchState = null;
+
+  if (state.fired || state.moved) {
+    suppressNextMultipleChoiceClick = false;
+    return;
+  }
+
+  // touchstart を preventDefault しているため、短押しは明示的に通常クリックへ戻す。
+  suppressNextMultipleChoiceClick = false;
+  state.button.click();
+}
+
 function finishInitialLoading() {
   if (hasFinishedInitialLoading) return;
   hasFinishedInitialLoading = true;
@@ -864,6 +937,10 @@ function bindNavigationEvents() {
   multipleChoiceOptionsEl?.addEventListener("pointermove", handleMultipleChoicePointerMove);
   multipleChoiceOptionsEl?.addEventListener("pointerup", finishMultipleChoicePointerGesture);
   multipleChoiceOptionsEl?.addEventListener("pointercancel", finishMultipleChoicePointerGesture);
+  multipleChoiceOptionsEl?.addEventListener("touchstart", handleMultipleChoiceTouchStart, { passive: false });
+  multipleChoiceOptionsEl?.addEventListener("touchmove", handleMultipleChoiceTouchMove, { passive: false });
+  multipleChoiceOptionsEl?.addEventListener("touchend", finishMultipleChoiceTouchGesture, { passive: false });
+  multipleChoiceOptionsEl?.addEventListener("touchcancel", finishMultipleChoiceTouchGesture, { passive: false });
   multipleChoiceOptionsEl?.addEventListener("contextmenu", handleMultipleChoiceContextMenu);
   multipleChoiceOptionsEl?.addEventListener("selectstart", preventMultipleChoiceTextSelection);
   multipleChoiceOptionsEl?.addEventListener("dragstart", preventMultipleChoiceTextSelection);
@@ -1199,6 +1276,7 @@ function hasAnyWordsByVol(wordsByVol) {
 function resetMultipleChoiceState() {
   clearMultipleChoiceLongPressTimer();
   multipleChoiceLongPressState = null;
+  multipleChoiceTouchState = null;
   suppressNextMultipleChoiceClick = false;
   closeEtymologyAnalysis();
   multipleChoiceQuestion = null;
