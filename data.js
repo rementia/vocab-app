@@ -149,20 +149,19 @@ function createEmptyWordsByVol() {
 }
 
 function createWordEntry(word, meaning, sourceVol, stableId = "", analysis = {}) {
-  return {
+  const entry = {
     id: normalizeWordKey(stableId || word),
     word,
     meaning,
     legacyWordKey: normalizeWordKey(word),
-    sourceVol,
-    morpheme: analysis.morpheme || "",
-    morphemeMeaning: analysis.morphemeMeaning || "",
-    semanticDevelopment: analysis.semanticDevelopment || "",
-    partOfSpeech: analysis.partOfSpeech || "",
-    semanticCategory: analysis.semanticCategory || "",
-    phonetic: analysis.phonetic || "",
-    pronunciationAudioUrl: analysis.pronunciationAudioUrl || ""
+    sourceVol
   };
+
+  Object.entries(analysis).forEach(([key, value]) => {
+    if (value) entry[key] = value;
+  });
+
+  return entry;
 }
 
 export function parseCsvToWordsByVol(text) {
