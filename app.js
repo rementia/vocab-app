@@ -801,6 +801,13 @@ function handleMultipleChoiceContextMenu(event) {
   if (button) event.preventDefault();
 }
 
+function preventMultipleChoiceTextSelection(event) {
+  const button = event.target instanceof Element
+    ? event.target.closest(".multiple-choice-option")
+    : null;
+  if (button) event.preventDefault();
+}
+
 function finishInitialLoading() {
   if (hasFinishedInitialLoading) return;
   hasFinishedInitialLoading = true;
@@ -858,6 +865,8 @@ function bindNavigationEvents() {
   multipleChoiceOptionsEl?.addEventListener("pointerup", finishMultipleChoicePointerGesture);
   multipleChoiceOptionsEl?.addEventListener("pointercancel", finishMultipleChoicePointerGesture);
   multipleChoiceOptionsEl?.addEventListener("contextmenu", handleMultipleChoiceContextMenu);
+  multipleChoiceOptionsEl?.addEventListener("selectstart", preventMultipleChoiceTextSelection);
+  multipleChoiceOptionsEl?.addEventListener("dragstart", preventMultipleChoiceTextSelection);
   document.getElementById("etymologyCloseBtn")?.addEventListener("click", closeEtymologyAnalysis);
   document.getElementById("etymologySpeakBtn")?.addEventListener("click", speakEtymologyTarget);
   document.getElementById("etymologyPanel")?.addEventListener("click", (event) => {
