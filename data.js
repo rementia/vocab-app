@@ -133,7 +133,14 @@ function getCsvColumnIndexes(rows, startIndex) {
     idIndex: getColumnIndex(headers, ID_COLUMN_NAMES, -1),
     wordIndex: getColumnIndex(headers, ["word", "単語"], 0),
     meaningIndex: getColumnIndex(headers, ["meaning", "意味"], 1),
-    levelIndex: getColumnIndex(headers, ["level", "レベル"], -1)
+    levelIndex: getColumnIndex(headers, ["level", "レベル"], -1),
+    morphemeIndex: getColumnIndex(headers, ["morpheme"], -1),
+    morphemeMeaningIndex: getColumnIndex(headers, ["morphememeaning"], -1),
+    semanticDevelopmentIndex: getColumnIndex(headers, ["semanticdevelopment"], -1),
+    partOfSpeechIndex: getColumnIndex(headers, ["partofspeech"], -1),
+    semanticCategoryIndex: getColumnIndex(headers, ["semanticcategory"], -1),
+    phoneticIndex: getColumnIndex(headers, ["phonetic"], -1),
+    pronunciationAudioUrlIndex: getColumnIndex(headers, ["pronunciationaudiourl"], -1)
   };
 }
 
@@ -141,21 +148,39 @@ function createEmptyWordsByVol() {
   return Object.fromEntries(VOL_NAMES.map((volName) => [volName, []]));
 }
 
-function createWordEntry(word, meaning, sourceVol, stableId = "") {
-  return {
+function createWordEntry(word, meaning, sourceVol, stableId = "", analysis = {}) {
+  const entry = {
     id: normalizeWordKey(stableId || word),
     word,
     meaning,
     legacyWordKey: normalizeWordKey(word),
     sourceVol
   };
+
+  Object.entries(analysis).forEach(([key, value]) => {
+    if (value) entry[key] = value;
+  });
+
+  return entry;
 }
 
 export function parseCsvToWordsByVol(text) {
   const rows = getTrimmedRows(text);
 
   const startIndex = rows.length > 0 && hasHeaderRow(rows[0]) ? 1 : 0;
-  const { idIndex, wordIndex, meaningIndex, levelIndex } = getCsvColumnIndexes(rows, startIndex);
+  const {
+    idIndex,
+    wordIndex,
+    meaningIndex,
+    levelIndex,
+    morphemeIndex,
+    morphemeMeaningIndex,
+    semanticDevelopmentIndex,
+    partOfSpeechIndex,
+    semanticCategoryIndex,
+    phoneticIndex,
+    pronunciationAudioUrlIndex
+  } = getCsvColumnIndexes(rows, startIndex);
   const wordsByVol = createEmptyWordsByVol();
 
   if (levelIndex < 0) return wordsByVol;
@@ -169,7 +194,16 @@ export function parseCsvToWordsByVol(text) {
 
     const meaning = cols[meaningIndex] || "";
     const stableId = idIndex >= 0 ? cols[idIndex] || "" : "";
-    wordsByVol[sourceVol].push(createWordEntry(word, meaning, sourceVol, stableId));
+    const readOptional = (columnIndex) => columnIndex >= 0 ? cols[columnIndex] || "" : "";
+    wordsByVol[sourceVol].push(createWordEntry(word, meaning, sourceVol, stableId, {
+      morpheme: readOptional(morphemeIndex),
+      morphemeMeaning: readOptional(morphemeMeaningIndex),
+      semanticDevelopment: readOptional(semanticDevelopmentIndex),
+      partOfSpeech: readOptional(partOfSpeechIndex),
+      semanticCategory: readOptional(semanticCategoryIndex),
+      phonetic: readOptional(phoneticIndex),
+      pronunciationAudioUrl: readOptional(pronunciationAudioUrlIndex)
+    }));
   });
 
   return wordsByVol;
