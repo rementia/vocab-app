@@ -41,6 +41,11 @@ const keepOrder = (items) => items;
     question.options.map((option) => option.secondaryText),
     ["abandon", "expand", "permit", "protect"]
   );
+  assert.deepStrictEqual(
+    question.options.map((option) => option.wordId),
+    ["abandon", "expand", "permit", "protect"],
+    "each option should retain its source word ID for long-press analysis"
+  );
 }
 
 {
