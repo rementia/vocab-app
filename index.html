@@ -233,6 +233,25 @@
         </div>
       </div>
     </main>
+
+    <section class="etymology-panel" id="etymologyPanel" hidden aria-modal="true" role="dialog" aria-labelledby="etymologyWord">
+      <div class="etymology-card">
+        <button class="etymology-close" id="etymologyCloseBtn" type="button" aria-label="語源解析を閉じる">×</button>
+        <div class="etymology-heading">
+          <div class="etymology-word" id="etymologyWord"></div>
+          <div class="etymology-phonetic" id="etymologyPhonetic"></div>
+          <button class="etymology-speak" id="etymologySpeakBtn" type="button">発音</button>
+        </div>
+        <dl class="etymology-fields">
+          <div><dt>意味</dt><dd id="etymologyMeaning"></dd></div>
+          <div><dt>語源・形態素</dt><dd id="etymologyMorpheme"></dd></div>
+          <div><dt>構成要素の意味</dt><dd id="etymologyMorphemeMeaning"></dd></div>
+          <div><dt>意味変化</dt><dd id="etymologySemanticDevelopment"></dd></div>
+          <div><dt>品詞</dt><dd id="etymologyPartOfSpeech"></dd></div>
+          <div><dt>意味カテゴリ</dt><dd id="etymologySemanticCategory"></dd></div>
+        </dl>
+      </div>
+    </section>
   </div>
 
   <script type="module" src="bootstrap.js"></script>
