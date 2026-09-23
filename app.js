@@ -1,5 +1,5 @@
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-import { fetchWordsByVol, fetchWordsForVol } from './data.js';
+import { fetchWordsByVol, fetchWordsForVol } from './data.js?v=12';
 import { getDomElements } from './dom.js';
 import { auth, db, provider } from './firebaseClient.js';
 import {
@@ -101,7 +101,7 @@ import {
 import {
   buildMultipleChoiceQuestion,
   getMultipleChoiceDirection
-} from './multipleChoice.js';
+} from './multipleChoice.js?v=12';
 import { getNextSearchResultIndex } from './searchController.js';
 import { getReloadedIndex } from './wordReloadService.js';
 import { createReloadStatusController } from './reloadStatusService.js';
