@@ -84,6 +84,24 @@ assert.deepStrictEqual(parseCsvToWords(stableIdCsv, "vol2"), [
   }
 ]);
 
+const analysisCsv = `id,word,meaning,level,morpheme,morphemeMeaning,semanticDevelopment,partOfSpeech,semanticCategory,phonetic,pronunciationAudioUrl\r\nw_test,test,試験,1,test-root,試す,語源から現代義へ,noun,object,tɛst,https://example.com/test.mp3\r\n`;
+assert.deepStrictEqual(parseCsvToWords(analysisCsv, "vol1"), [
+  {
+    id: "w_test",
+    word: "test",
+    meaning: "試験",
+    legacyWordKey: "test",
+    sourceVol: "vol1",
+    morpheme: "test-root",
+    morphemeMeaning: "試す",
+    semanticDevelopment: "語源から現代義へ",
+    partOfSpeech: "noun",
+    semanticCategory: "object",
+    phonetic: "tɛst",
+    pronunciationAudioUrl: "https://example.com/test.mp3"
+  }
+], "analysis columns should be preserved for etymology display");
+
 assert.strictEqual(getSheetFetchUrl(), SHEET_URL, "normal sheet URL should not add cache busting");
 assert.strictEqual(
   getSheetFetchUrl({ forceRefresh: true, cacheBust: 123 }),
