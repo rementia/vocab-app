@@ -188,6 +188,13 @@ let hasShownCloudSyncWarning = false;
 let multipleChoiceQuestion = null;
 let multipleChoiceAnswer = null;
 let multipleChoiceRevealedOptionIndexes = new Set();
+let multipleChoiceLongPressTimer = null;
+let multipleChoiceLongPressState = null;
+let suppressNextMultipleChoiceClick = false;
+let etymologyTarget = null;
+
+const MULTIPLE_CHOICE_LONG_PRESS_MS = 550;
+const MULTIPLE_CHOICE_LONG_PRESS_MOVE_PX = 12;
 
 let listNeedsRebuild = true;
 let renderedListVersion = "";
@@ -617,6 +624,12 @@ function getMultipleChoiceQuestion() {
 }
 
 function handleMultipleChoiceOptionClick(event) {
+  if (suppressNextMultipleChoiceClick) {
+    suppressNextMultipleChoiceClick = false;
+    event.preventDefault();
+    return;
+  }
+
   const button = event.target instanceof Element
     ? event.target.closest(".multiple-choice-option")
     : null;
@@ -653,6 +666,141 @@ function handleMultipleChoiceOptionClick(event) {
   finishReviewStatsChange();
   scheduleSpeechSync();
 }
+function clearMultipleChoiceLongPressTimer() {
+  if (multipleChoiceLongPressTimer !== null) {
+    clearTimeout(multipleChoiceLongPressTimer);
+    multipleChoiceLongPressTimer = null;
+  }
+}
+
+function findLoadedWordById(wordId) {
+  if (!wordId) return null;
+  for (const volName of volOrder) {
+    const match = (allWordsByVol[volName] || []).find((item) => item.id === wordId);
+    if (match) return match;
+  }
+  return null;
+}
+
+function setEtymologyField(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = value || "—";
+}
+
+function openEtymologyAnalysis(item) {
+  if (!item) return;
+  etymologyTarget = item;
+
+  setEtymologyField("etymologyWord", item.word);
+  setEtymologyField("etymologyPhonetic", item.phonetic ? `/${item.phonetic}/` : "");
+  setEtymologyField("etymologyMeaning", item.meaning);
+  setEtymologyField("etymologyMorpheme", item.morpheme);
+  setEtymologyField("etymologyMorphemeMeaning", item.morphemeMeaning);
+  setEtymologyField("etymologySemanticDevelopment", item.semanticDevelopment);
+  setEtymologyField("etymologyPartOfSpeech", item.partOfSpeech);
+  setEtymologyField("etymologySemanticCategory", item.semanticCategory);
+
+  const panel = document.getElementById("etymologyPanel");
+  if (panel) panel.hidden = false;
+}
+
+function closeEtymologyAnalysis() {
+  const panel = document.getElementById("etymologyPanel");
+  if (panel) panel.hidden = true;
+  etymologyTarget = null;
+}
+
+async function speakEtymologyTarget() {
+  const target = etymologyTarget;
+  if (!target?.word) return;
+
+  if (target.pronunciationAudioUrl) {
+    try {
+      const audio = new Audio(target.pronunciationAudioUrl);
+      await audio.play();
+      return;
+    } catch (error) {
+      console.warn("監査済み発音音声を再生できなかったため音声合成へ切り替えます:", error);
+    }
+  }
+
+  if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(target.word);
+  utterance.lang = "en-US";
+  utterance.rate = 0.9;
+  utterance.pitch = 1.0;
+  window.speechSynthesis.speak(utterance);
+}
+
+function handleMultipleChoicePointerDown(event) {
+  if (!multipleChoiceAnswer || (event.pointerType !== "touch" && event.button !== 0)) return;
+
+  const button = event.target instanceof Element
+    ? event.target.closest(".multiple-choice-option")
+    : null;
+  if (!(button instanceof HTMLElement)) return;
+
+  const question = getMultipleChoiceQuestion();
+  const choiceIndex = Number(button.dataset.choiceIndex);
+  const selectedOption = question?.options?.[choiceIndex];
+  if (!selectedOption?.wordId) return;
+
+  clearMultipleChoiceLongPressTimer();
+  multipleChoiceLongPressState = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    choiceIndex,
+    fired: false
+  };
+
+  multipleChoiceLongPressTimer = setTimeout(() => {
+    const state = multipleChoiceLongPressState;
+    if (!state || state.pointerId !== event.pointerId) return;
+
+    const latestQuestion = getMultipleChoiceQuestion();
+    const option = latestQuestion?.options?.[state.choiceIndex];
+    const target = findLoadedWordById(option?.wordId);
+    if (!target) return;
+
+    state.fired = true;
+    suppressNextMultipleChoiceClick = true;
+    openEtymologyAnalysis(target);
+    window.setTimeout(() => {
+      suppressNextMultipleChoiceClick = false;
+    }, 500);
+  }, MULTIPLE_CHOICE_LONG_PRESS_MS);
+}
+
+function handleMultipleChoicePointerMove(event) {
+  const state = multipleChoiceLongPressState;
+  if (!state || state.pointerId !== event.pointerId) return;
+
+  const distance = Math.hypot(event.clientX - state.startX, event.clientY - state.startY);
+  if (distance > MULTIPLE_CHOICE_LONG_PRESS_MOVE_PX) {
+    clearMultipleChoiceLongPressTimer();
+    multipleChoiceLongPressState = null;
+  }
+}
+
+function finishMultipleChoicePointerGesture(event) {
+  const state = multipleChoiceLongPressState;
+  if (!state || state.pointerId !== event.pointerId) return;
+
+  clearMultipleChoiceLongPressTimer();
+  if (state.fired) event.preventDefault();
+  multipleChoiceLongPressState = null;
+}
+
+function handleMultipleChoiceContextMenu(event) {
+  if (!multipleChoiceAnswer) return;
+  const button = event.target instanceof Element
+    ? event.target.closest(".multiple-choice-option")
+    : null;
+  if (button) event.preventDefault();
+}
+
 function finishInitialLoading() {
   if (hasFinishedInitialLoading) return;
   hasFinishedInitialLoading = true;
@@ -705,6 +853,19 @@ function bindNavigationEvents() {
   nextWordBtnEl?.addEventListener("click", nextWord);
   speakWordBtnEl?.addEventListener("click", handleSpeakCurrentWord);
   multipleChoiceOptionsEl?.addEventListener("click", handleMultipleChoiceOptionClick);
+  multipleChoiceOptionsEl?.addEventListener("pointerdown", handleMultipleChoicePointerDown);
+  multipleChoiceOptionsEl?.addEventListener("pointermove", handleMultipleChoicePointerMove);
+  multipleChoiceOptionsEl?.addEventListener("pointerup", finishMultipleChoicePointerGesture);
+  multipleChoiceOptionsEl?.addEventListener("pointercancel", finishMultipleChoicePointerGesture);
+  multipleChoiceOptionsEl?.addEventListener("contextmenu", handleMultipleChoiceContextMenu);
+  document.getElementById("etymologyCloseBtn")?.addEventListener("click", closeEtymologyAnalysis);
+  document.getElementById("etymologySpeakBtn")?.addEventListener("click", speakEtymologyTarget);
+  document.getElementById("etymologyPanel")?.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) closeEtymologyAnalysis();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && etymologyTarget) closeEtymologyAnalysis();
+  });
   document.querySelector(".center-box")?.addEventListener("click", handleAutoPlaySkipRequest);
 }
 
@@ -1027,6 +1188,10 @@ function hasAnyWordsByVol(wordsByVol) {
 }
 
 function resetMultipleChoiceState() {
+  clearMultipleChoiceLongPressTimer();
+  multipleChoiceLongPressState = null;
+  suppressNextMultipleChoiceClick = false;
+  closeEtymologyAnalysis();
   multipleChoiceQuestion = null;
   multipleChoiceAnswer = null;
   multipleChoiceRevealedOptionIndexes.clear();
