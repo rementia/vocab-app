@@ -80,11 +80,17 @@ export function buildMultipleChoiceQuestion({
     translationMode
   })).slice(0, 3);
   const choices = shuffle([
-    { text: correctText, secondaryText: getMultipleChoiceSecondaryText(current, options), isCorrect: true },
+    {
+      text: correctText,
+      secondaryText: getMultipleChoiceSecondaryText(current, options),
+      isCorrect: true,
+      wordId: current.id
+    },
     ...distractors.map((item) => ({
       text: getMultipleChoiceAnswerText(item, options),
       secondaryText: getMultipleChoiceSecondaryText(item, options),
-      isCorrect: false
+      isCorrect: false,
+      wordId: item.id
     }))
   ]);
 
